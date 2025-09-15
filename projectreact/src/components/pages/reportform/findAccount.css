@@ -1,0 +1,78 @@
+/* findAccount.css */
+.find-card {
+    width: 400px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    background-color: #fff;
+    margin-top: 24px;
+}
+
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.tab-btn:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-right: none;
+}
+
+.tab-btn:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.tab-btn.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.tab-content {
+    padding-top: 20px;
+}
+
+/* 부트스트랩 자체 classname이 아닌 자신의 customClass로 정의해야 다른 스타일이 바뀌지 않음 수정 희망 */
+/* .input-group {
+    display: flex;
+}
+
+.input-group .form-control {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+} */
+
+.modal-content {
+  /* 기존 스타일... */
+  
+  width: auto;      /* 내용에 따라 너비가 자동으로 조절됩니다. */
+  min-width: 300px; /* 모달의 최소 너비를 설정합니다. */
+  max-width: 500px; /* 모달의 최대 너비를 설정하여 화면을 너무 크게 차지하지 않게 합니다. */
+}
+
+.modal-message {
+  white-space: nowrap;         /* 텍스트 줄바꿈 방지 */
+  text-align: center;          /* 가운데 정렬 */
+  max-width: 100%;             /* 부모 컨테이너를 벗어나지 않도록 함 */
+  margin-bottom: 1rem;         /* 하단 여백 추가 */
+}

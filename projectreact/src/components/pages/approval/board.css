@@ -1,0 +1,13 @@
+a.board-title:link,
+a.board-title {
+  color: var(--bs-link-color, #0d6efd);
+}
+
+a.board-title:visited {
+  color: #6f42c1;
+}
+
+a.board-title:hover {
+  color: var(--bs-link-hover-color, #0a58ca);
+  text-decoration: underline;
+}

@@ -1,0 +1,112 @@
+/* class name : color
+cancel-button : 글자만 빨간색
+submit-button : #E8F9FF
+basic-button : #C5BAFF
+reset-button : #fffcee */
+
+.cancel-button {
+  background-color: #b22222 !important;
+  border-color: #b22222 !important;
+  color: white !important;
+}
+
+.cancel-button:hover {
+  background-color: #b22222 !important;
+  border-color: #b22222 !important;
+  color: white !important;
+}
+
+.cancel-button:active {
+  background-color: #b22222 !important;
+  border-color: #b22222 !important;
+  color: white !important;
+}
+
+.submit-button {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.submit-button:hover {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.submit-button:active {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.basic-button {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.basic-button:hover {
+  background-color: #2f4f6f !important;
+  border-color: lightblue !important;
+  color: white !important;
+}
+
+.basic-button:active {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.reset-button {
+  background-color: #fffcee !important;
+  color: white !important;
+}
+
+a {
+  text-decoration: none !important;
+}
+
+.deleteRow {
+  color: red !important;
+  text-align: center;
+}
+
+th {
+  background-color: #2f4f6f !important;
+  text-align: center;
+}
+
+.page-item .page-link {
+  color: black !important;
+}
+
+.page-item:active .page-link {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.page-item:hover .page-link {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white!important;
+}
+
+.page-item.activePage .page-link {
+  background-color: #2f4f6f !important;
+  border-color: #2f4f6f !important;
+  color: white !important;
+}
+
+.w-10 {
+  width: 10%;
+}
+
+.w-15 {
+  width: 15%;
+}
+
+strong{
+  text-align: left;
+}

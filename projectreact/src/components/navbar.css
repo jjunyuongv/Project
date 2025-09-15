@@ -1,0 +1,144 @@
+.nav-root {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f8fbff;
+  border-bottom: 1px solid #eef2f7;
+  backdrop-filter: saturate(140%) blur(6px);
+}
+
+.nav-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  height: 64px;
+  padding: 0 20px;
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto 1fr auto;
+}
+
+.nav-brand {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.nav-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-links {
+  justify-self: center;
+  display: flex;
+  gap: 56px;
+}
+.nav-link {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  color: #2b3a4d;
+}
+.nav-link:hover {
+  opacity: 0.85;
+}
+.nav-link.active {
+  color: #0b5ed7;
+}
+
+.nav-login {
+  justify-self: end;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 800;
+}
+.nav-login:hover {
+  filter: brightness(1.05);
+}
+
+/* 로그인/유저 정보 컨테이너 */
+.nav-auth-container {
+  justify-self: end; /* 그리드에서 오른쪽 끝으로 정렬 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 로그인 버튼 스타일 (기존과 동일하게 유지) */
+.nav-login {
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+.nav-login:hover {
+  background-color: #0d6efd;
+}
+
+/* 로그아웃 버튼 스타일 */
+.nav-logout-btn {
+  background-color: #000000; 
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.nav-logout-btn:hover {
+  background-color: #c82333; /* 마우스 오버 시 약간 어둡게 */
+}
+
+/* 유저 이름 스타일 */
+.nav-username {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #2b3a4d;
+  white-space: nowrap;
+}
+
+.nav-logout-btn:hover {
+  filter: brightness(1.05);
+}
+
+@media (max-width: 900px) {
+  .nav-links {
+    gap: 28px;
+  }
+}
+@media (max-width: 640px) {
+  .nav-container {
+    grid-template-columns: auto 1fr auto;
+  }
+  .nav-links {
+    gap: 20px;
+    overflow-x: auto;
+  }
+}
+
+.nav-extend-btn {
+  background-color: #5d9ddf; /* 적절한 파란색 */
+  color: #ffffff; /* 흰색 텍스트 */
+  border: none; /* 테두리 제거 */
+  padding: 8px 12px; /* 상하좌우 패딩 */
+  border-radius: 5px; /* 모서리를 둥글게 */
+  cursor: pointer; /* 마우스 오버 시 손가락 모양 */
+  font-size: 14px; /* 적당한 폰트 크기 */
+  font-weight: 500;
+  transition: background-color 0.2s ease; /* 호버 효과를 부드럽게 */
+}
+
+.nav-extend-btn:hover {
+  background-color: #4a8dc7; /* 마우스 오버 시 약간 어둡게 */
+}

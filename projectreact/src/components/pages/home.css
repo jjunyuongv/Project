@@ -1,0 +1,64 @@
+:root{
+  --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b;
+  --border:#e2e8f0; --brand:#0369a1; --brand-dark:#0a4f7a;
+  --radius:16px; --shadow:0 6px 20px rgba(15,23,42,.08);
+}
+
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+a{color:inherit;text-decoration:none}
+
+.ap-container{max-width:1120px;margin:0 auto;padding:0 20px}
+.ap-root{min-height:100vh}
+.ap-header{position:sticky;top:0;background:rgba(255,255,255,.85);backdrop-filter:saturate(150%) blur(8px);border-bottom:1px solid var(--border);z-index:10}
+.ap-nav{height:64px;display:flex;align-items:center;gap:12px}
+.ap-brand{display:flex;align-items:center;gap:10px}
+.ap-brand-badge{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--brand);color:#fff;box-shadow:var(--shadow)}
+.ap-brand-title{font-weight:800}
+.ap-brand-sub{font-size:12px;color:var(--muted)}
+.ap-links{display:none;gap:8px;margin-left:auto;margin-right:8px}
+.ap-links a{padding:8px 12px;border-radius:10px;color:#334155}
+.ap-links a:hover{background:#f1f5f9}
+.ap-btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+.ap-btn-primary{background:#0f172a;color:#fff}
+.ap-btn-primary:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+
+@media (min-width:768px){ .ap-links{display:flex} }
+
+.ap-main{padding:24px 0}
+.ap-grid{display:grid;grid-template-columns:1fr;gap:24px}
+@media (min-width:1024px){ .ap-grid{grid-template-columns:2fr 1fr} }
+
+.ap-hero{position:relative;height:520px;border-radius:24px;overflow:hidden;background:#e2e8f0;box-shadow:var(--shadow);border:1px solid var(--border)}
+.ap-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ap-hero-empty{position:absolute;inset:0;display:grid;place-items:center;color:#94a3b8}
+.ap-hero-grad{position:absolute;inset:0;background:linear-gradient(135deg,rgba(15,23,42,.45),transparent 55%)}
+.ap-hero-caption{position:absolute;left:16px;bottom:16px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+.ap-hero-caption h1{margin:0;font-size:28px;font-weight:900}
+.ap-hero-caption p{margin:6px 0 0;color:#e2e8f0}
+
+.ap-sidebar{display:flex;flex-direction:column;gap:24px}
+.ap-card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+.ap-card-title{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:10px;color:#1f2937}
+.ap-card-actions{text-align:right;margin-top:10px}
+.ap-card-actions a{font-weight:700;color:#0369a1}
+.ap-list{list-style:none;margin:0;padding:0}
+.ap-list li{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--border)}
+.ap-list li:first-child{border-top:0}
+.ap-list-title{font-weight:700}
+.ap-list-sub{font-size:12px;color:var(--muted)}
+.ap-list-time{font-size:14px;color:#334155;white-space:nowrap}
+
+.ap-weather{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}
+.ap-weather-temp{font-size:28px;font-weight:900}
+.ap-weather-meta{font-size:14px;color:#475569}
+.ap-weather-date{font-size:12px;color:#94a3b8}
+
+.ap-skeleton{display:grid;gap:10px}
+.ap-skeleton > div{height:12px;border-radius:8px;background:#e2e8f0;animation:pulse 1.2s infinite ease-in-out}
+@keyframes pulse{0%{opacity:.6}50%{opacity:.3}100%{opacity:.6}}
+
+.ap-footer{border-top:1px solid var(--border);padding:24px 0;margin-top:24px;background:#fff}
+.ap-footer-inner{display:flex;justify-content:space-between;align-items:center;color:#64748b}
+.ap-footer-left{display:flex;align-items:center;gap:8px}
+.ap-footer-right a{color:#334155}
+.ap-footer-right a:hover{text-decoration:underline}
