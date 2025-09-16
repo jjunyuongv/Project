@@ -1,6 +1,7 @@
 // src/main/java/com/pj/springboot/approval/service/ApprovalService.java
 package com.pj.springboot.approval.service;
 
+import java.time.Duration;                    // ✅ 추가
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -40,17 +41,24 @@ public class ApprovalService {
     // application.properties 에서 주입 (기본값 9001)
     private final Integer adminEmployeeId;
 
+    // ✅ NEW 배지 유지시간(기본 24시간). 예) PT24H, PT3H, PT30M, PT1S 등
+    private final Duration newBadgeDuration;
+
     public ApprovalService(ApprovalDocRepository docRepo,
                            ApprovalLineRepository lineRepo,
                            TimeoffRequestRepository timeoffRepo,
                            FileUpload fileUpload,
-                           @Value("${app.admin-employee-id:9001}") Integer adminEmployeeId) {
+                           @Value("${app.admin-employee-id:9001}") Integer adminEmployeeId,
+                           @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration) {  // ✅ 추가
         this.docRepo = docRepo;
         this.lineRepo = lineRepo;
         this.timeoffRepo = timeoffRepo;
         this.fileUpload = fileUpload;
         this.adminEmployeeId = adminEmployeeId;
+        this.newBadgeDuration = newBadgeDuration;  // ✅ 저장
+
         System.out.println("[ApprovalService] adminEmployeeId = " + this.adminEmployeeId);
+        System.out.println("[ApprovalService] newBadgeDuration = " + this.newBadgeDuration);
     }
 
     /* 목록 */
@@ -61,8 +69,9 @@ public class ApprovalService {
                 ? docRepo.findAll(pageable)
                 : docRepo.findByApprovalStatus(parsed, pageable);
 
-        // ✅ 24시간 내 NEW 플래그 계산 + 수동 매핑
-        LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+        // ✅ NEW 배지 기준시각을 설정값으로 계산
+        LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration);
+
         List<ApprovalDto> content = new ArrayList<>();
         for (ApprovalDoc d : page.getContent()) {
             boolean isNew = d.getApprovalDate() != null && d.getApprovalDate().isAfter(threshold);
@@ -88,7 +97,6 @@ public class ApprovalService {
 
         List<ApprovalLine> lines = lineRepo.findByDocApprovalDocIdOrderByApprovalSequenceAsc(docId);
 
-        // ✅ stream/Collectors 없이 안전하게 변환 (버전/의존성 상관없음)
         List<ApprovalLineDto> lineDtos = new ArrayList<>();
         for (ApprovalLine l : lines) {
             lineDtos.add(new ApprovalLineDto(
@@ -97,7 +105,7 @@ public class ApprovalService {
                     l.getApprovalSequence(),
                     l.getApprovalLineStatus(),
                     l.getApprovalLineDate(),
-                    null   // approverName: 필요 시 조회해서 채우세요
+                    null
             ));
         }
 
@@ -250,11 +258,11 @@ public class ApprovalService {
         Page<ApprovalLine> lines = lineRepo.findByApprovalIdAndApprovalLineStatus(
                 me, ApprovalLine.LineStatus.PENDING, pageable);
 
-        // ✅ 수동 매핑 + NEW 플래그 계산
-        LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+        LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration); // ✅ 동일 기준
+
         List<ApprovalDto> dtos = new ArrayList<>();
         for (ApprovalLine l : lines.getContent()) {
-            ApprovalDoc d = l.getDoc(); // LAZY여도 트랜잭션 내에서 안전
+            ApprovalDoc d = l.getDoc();
             if (d != null) {
                 boolean isNew = d.getApprovalDate() != null && d.getApprovalDate().isAfter(threshold);
                 dtos.add(new ApprovalDto(
@@ -297,7 +305,6 @@ public class ApprovalService {
         docRepo.delete(d);
     }
 
-    /* 다운로드 DTO */
     public static record DownloadableFile(Resource resource, String originalName, String contentType) {}
 
     @Transactional(readOnly = true)

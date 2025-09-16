@@ -40,6 +40,7 @@ function ApprovalList() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
+  // URL 쿼리싱크
   useEffect(() => {
     const next = new URLSearchParams();
     if (page > 0) next.set("page", String(page));
@@ -48,6 +49,7 @@ function ApprovalList() {
     setSp(next, { replace: true });
   }, [page, status, q, setSp]);
 
+  // 목록 로드
   useEffect(() => {
     const ctrl = new AbortController();
     async function load() {
@@ -121,7 +123,9 @@ function ApprovalList() {
       </header>
 
       <main className="container-xxl py-4 flex-grow-1">
+        {/* 상단 바 */}
         <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
+          {/* 상태 필터 */}
           <div className="dropdown">
             <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
               {status === "ALL" ? "전체 상태"
@@ -140,6 +144,7 @@ function ApprovalList() {
             </ul>
           </div>
 
+          {/* 검색 */}
           <div className="input-group" style={{ maxWidth: 520 }}>
             <input
               type="text"
@@ -159,12 +164,14 @@ function ApprovalList() {
           </Link>
         </div>
 
+        {/* 에러 */}
         {err && (
           <div className="alert alert-danger" role="alert">
             {err}
           </div>
         )}
 
+        {/* 목록 */}
         <div className="table-responsive shadow-sm rounded-3 bg-white">
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
@@ -203,9 +210,9 @@ function ApprovalList() {
                         <Link to={to} className="link-primary fw-semibold align-middle">
                           {r.approvalTitle || "(제목 없음)"}
                         </Link>
-                        {/* ✅ 제목 오른쪽에 NEW 배지 */}
+                        {/* NEW 배지 (노랑) */}
                         {r.isNew && (
-                          <span className="badge rounded-pill bg-primary ms-2 align-middle">N</span>
+                          <span className="badge rounded-pill bg-warning text-dark ms-2 align-middle">N</span>
                         )}
                       </td>
                       <td className="text-center">
@@ -224,6 +231,7 @@ function ApprovalList() {
           </table>
         </div>
 
+        {/* 페이지 네비 */}
         <nav className="mt-3 d-flex justify-content-center align-items-center gap-2" aria-label="페이지네이션">
           <button className="btn btn-light border" onClick={() => setPage(0)} disabled={pageInfo.first}>« 처음</button>
           <button className="btn btn-light border" onClick={goPrev} disabled={pageInfo.first}>이전</button>
