@@ -27,6 +27,17 @@ function useCurrentUser() {
   return me;
 }
 
+/** 여러 필드 중 숫자형 사번 뽑기 */
+function extractEmpId(me) {
+  const cand = [me?.employeeId, me?.userId, me?.username, me?.loginId];
+  for (const c of cand) {
+    if (c == null) continue;
+    const n = Number(c);
+    if (Number.isFinite(n)) return String(n);
+  }
+  return null;
+}
+
 const statusInfo = (s) => {
   switch (s) {
     case "APPROVED": return { label: "승인", cls: "badge rounded-pill bg-success" };
@@ -53,7 +64,10 @@ function ApprovalView() {
   const loc = useLocation();
   const { id, num } = useParams();
   const docId = id ?? num;
+
   const me = useCurrentUser();
+  const myEmpId = extractEmpId(me);
+  const ADMIN_EMP_ID = "20250001";
 
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,18 +78,21 @@ function ApprovalView() {
   const [rejectReason, setRejectReason] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // 상세 로딩: 반드시 X-Employee-Id 붙이기
   useEffect(() => {
     if (!docId) return;
     const ctrl = new AbortController();
     (async () => {
       setLoading(true); setErr(null);
       try {
+        const headers = { Accept: "application/json" };
+        if (myEmpId) headers["X-Employee-Id"] = myEmpId;   // ✅ 핵심
         const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
-          headers: { Accept: "application/json" },
-          signal: ctrl.signal,
+          headers, signal: ctrl.signal,
         });
         if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
-        setDoc(await res.json());
+        const data = await res.json();
+        setDoc(data);
       } catch (e) {
         if (e.name !== "AbortError") setErr(e.message || String(e));
       } finally {
@@ -83,34 +100,28 @@ function ApprovalView() {
       }
     })();
     return () => ctrl.abort();
-  }, [docId]);
+  }, [docId, myEmpId]);
 
+  // 결재 이력 테이블용 정렬된 배열
   const lines = useMemo(() => {
     const arr = doc?.lines || [];
     return [...arr].sort((a, b) => (a.approvalSequence ?? 0) - (b.approvalSequence ?? 0));
   }, [doc]);
 
-  const isApproverRole = !!me?.roles?.some(r => r === "ROLE_ADMIN" || r === "ROLE_APPROVER");
-  const isAdmin = !!me?.roles?.includes("ROLE_ADMIN");
-  const firstPending = useMemo(
-    () => lines.find((l) => (l.approvalLineStatus ?? "PENDING") === "PENDING"),
-    [lines]
-  );
-  const isMyTurn =
-    isApproverRole &&
-    firstPending &&
-    (firstPending.approvalId === me?.username ||
-     firstPending.approvalId === me?.employeeId ||
-     firstPending.approvalId === me?.userId);
+  // 관리자 여부
+  const isAdmin =
+    (myEmpId && myEmpId === ADMIN_EMP_ID) ||
+    (me?.roles?.includes("ROLE_ADMIN") ?? false);
 
-  const canDecide = doc?.approvalStatus === "PENDING" && (isMyTurn || isAdmin);
+  // 버튼 노출: 서버가 내려준 canApprove 또는 관리자
+  const canDecide =
+    doc?.approvalStatus === "PENDING" && (doc?.canApprove === true || isAdmin);
 
+  // 삭제 권한: 관리자 or (미승인 & 작성자 본인)
   const isOwner = useMemo(() => {
-    if (!doc || !me) return false;
-    return String(doc.approvalAuthor) === String(me.employeeId)
-        || String(doc.approvalAuthor) === String(me.username)
-        || String(doc.approvalAuthor) === String(me.userId);
-  }, [doc, me]);
+    if (!doc || !myEmpId) return false;
+    return String(doc.approvalAuthor) === String(myEmpId);
+  }, [doc, myEmpId]);
 
   const canDelete = useMemo(() => {
     if (!doc) return false;
@@ -119,6 +130,7 @@ function ApprovalView() {
     return isOwner;
   }, [doc, isAdmin, isOwner]);
 
+  // 승인/반려
   const decide = async (action, reason) => {
     if (!docId) return;
     setDeciding(true);
@@ -128,20 +140,15 @@ function ApprovalView() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          ...(me?.token ? { Authorization: `Bearer ${me.token}` } : {}),
+          "X-Employee-Id": myEmpId,    // ✅ 필수
         },
-        body: JSON.stringify(reason ? { reason } : {}),
+        body: JSON.stringify(reason ? { opinion: reason } : {}),
       });
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
         throw new Error(`${action} 실패 (${res.status}) ${txt}`);
       }
-      try {
-        const updated = await res.json();
-        setDoc(updated);
-      } catch {
-        navigate(0);
-      }
+      navigate(0); // 보통 본문이 없으니 새로고침
       setRejectOpen(false);
       setRejectReason("");
     } catch (e) {
@@ -151,6 +158,7 @@ function ApprovalView() {
     }
   };
 
+  // 삭제
   const handleDelete = async () => {
     if (!docId) return;
     if (!window.confirm(`정말 삭제할까요?\n\n문서번호: ${doc?.approvalDocId}\n제목: ${doc?.approvalTitle || ""}`)) {
@@ -158,16 +166,12 @@ function ApprovalView() {
     }
     setDeleting(true);
     try {
-      const headers = {
-        Accept: "application/json",
-        ...(me?.token ? { Authorization: `Bearer ${me.token}` } : {}),
-      };
-      if (me?.employeeId != null) {
-        headers["X-Employee-Id"] = String(me.employeeId);
-      }
       const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
         method: "DELETE",
-        headers,
+        headers: {
+          Accept: "application/json",
+          "X-Employee-Id": myEmpId,    // ✅ 필수
+        },
       });
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
@@ -351,22 +355,20 @@ function ApprovalView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(doc.lines?.length ?? 0) === 0 ? (
+                      {(lines.length === 0) ? (
                         <tr><td colSpan={4} className="text-center text-muted py-4">결재 이력이 없습니다.</td></tr>
                       ) : (
-                        [...doc.lines]
-                          .sort((a, b) => (a.approvalSequence ?? 0) - (b.approvalSequence ?? 0))
-                          .map((l) => {
-                            const li = statusInfo(l.approvalLineStatus);
-                            return (
-                              <tr key={l.approvalLineIdx}>
-                                <td className="text-center">{l.approvalSequence}</td>
-                                <td>{l.approvalId}</td>
-                                <td className="text-center"><span className={li.cls}>{li.label}</span></td>
-                                <td className="text-center">{l.approvalLineDate ? fmtDate(l.approvalLineDate) : "-"}</td>
-                              </tr>
-                            );
-                          })
+                        lines.map((l) => {
+                          const li = statusInfo(l.approvalLineStatus);
+                          return (
+                            <tr key={l.approvalLineIdx}>
+                              <td className="text-center">{l.approvalSequence}</td>
+                              <td>{l.approvalId}</td>
+                              <td className="text-center"><span className={li.cls}>{li.label}</span></td>
+                              <td className="text-center">{l.approvalLineDate ? fmtDate(l.approvalLineDate) : "-"}</td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
