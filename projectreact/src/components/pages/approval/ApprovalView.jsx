@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 
-/** localStorage("me")에서 로그인 사용자 정보 읽기 */
+/* localStorage("me")에서 로그인 사용자 정보 읽기 */
 function useCurrentUser() {
   const [me, setMe] = useState(() => {
     try {
@@ -27,7 +27,7 @@ function useCurrentUser() {
   return me;
 }
 
-/** 여러 필드 중 숫자형 사번 뽑기 */
+/* 여러 필드 중 숫자형 사번 뽑기 */
 function extractEmpId(me) {
   const cand = [me?.employeeId, me?.userId, me?.username, me?.loginId];
   for (const c of cand) {
@@ -38,21 +38,26 @@ function extractEmpId(me) {
   return null;
 }
 
-const statusInfo = (s) => {
-  switch (s) {
-    case "APPROVED": return { label: "승인", cls: "badge rounded-pill bg-success" };
-    case "REJECTED": return { label: "반려", cls: "badge rounded-pill bg-danger" };
+/* 상태 뱃지 */
+function statusBadgeInfo(s) {
+  switch (String(s || "").toUpperCase()) {
+    case "APPROVED": return { label: "승인",  cls: "badge rounded-pill bg-success" };
+    case "REJECTED": return { label: "반려",  cls: "badge rounded-pill bg-danger" };
     case "PENDING":  return { label: "대기",  cls: "badge rounded-pill bg-warning text-dark" };
     default:         return { label: s || "-", cls: "badge rounded-pill bg-secondary" };
   }
-};
+}
+
+/* 보조 포맷터 */
 const toCategoryLabel = (c) =>
   c === "TIMEOFF" ? "휴가/근무 변경" : c === "SHIFT" ? "근무 교대" : c || "-";
+
 const fmtDate = (s, withTime = true) => {
   if (!s) return "-";
   const d = new Date(s);
   const pad = (n) => String(n).padStart(2, "0");
-  if (Number.isNaN(d.getTime())) return withTime ? s.replace("T", " ") : (s.includes("T") ? s.split("T")[0] : s);
+  if (Number.isNaN(d.getTime()))
+    return withTime ? s.replace("T", " ") : (s.includes("T") ? s.split("T")[0] : s);
   const Y = d.getFullYear(), M = pad(d.getMonth() + 1), D = pad(d.getDate());
   if (!withTime) return `${Y}-${M}-${D}`;
   const h = pad(d.getHours()), m = pad(d.getMinutes());
@@ -67,7 +72,7 @@ function ApprovalView() {
 
   const me = useCurrentUser();
   const myEmpId = extractEmpId(me);
-  const ADMIN_EMP_ID = "20250001";
+  const ADMIN_EMP_ID = "20250001"; // 필요시 .env로 분리
 
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +83,7 @@ function ApprovalView() {
   const [rejectReason, setRejectReason] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  // 상세 로딩: 반드시 X-Employee-Id 붙이기
+  // 상세 로딩 (X-Employee-Id 헤더 포함)
   useEffect(() => {
     if (!docId) return;
     const ctrl = new AbortController();
@@ -86,7 +91,7 @@ function ApprovalView() {
       setLoading(true); setErr(null);
       try {
         const headers = { Accept: "application/json" };
-        if (myEmpId) headers["X-Employee-Id"] = myEmpId;   // ✅ 핵심
+        if (myEmpId) headers["X-Employee-Id"] = myEmpId;
         const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
           headers, signal: ctrl.signal,
         });
@@ -102,7 +107,7 @@ function ApprovalView() {
     return () => ctrl.abort();
   }, [docId, myEmpId]);
 
-  // 결재 이력 테이블용 정렬된 배열
+  // 결재 이력 정렬
   const lines = useMemo(() => {
     const arr = doc?.lines || [];
     return [...arr].sort((a, b) => (a.approvalSequence ?? 0) - (b.approvalSequence ?? 0));
@@ -111,13 +116,13 @@ function ApprovalView() {
   // 관리자 여부
   const isAdmin =
     (myEmpId && myEmpId === ADMIN_EMP_ID) ||
-    (me?.roles?.includes("ROLE_ADMIN") ?? false);
+    (Array.isArray(me?.roles) && me.roles.includes("ROLE_ADMIN"));
 
-  // 버튼 노출: 서버가 내려준 canApprove 또는 관리자
+  // 승인/반려 버튼 노출
   const canDecide =
     doc?.approvalStatus === "PENDING" && (doc?.canApprove === true || isAdmin);
 
-  // 삭제 권한: 관리자 or (미승인 & 작성자 본인)
+  // 삭제 권한
   const isOwner = useMemo(() => {
     if (!doc || !myEmpId) return false;
     return String(doc.approvalAuthor) === String(myEmpId);
@@ -140,7 +145,7 @@ function ApprovalView() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "X-Employee-Id": myEmpId,    // ✅ 필수
+          "X-Employee-Id": myEmpId, // 필수
         },
         body: JSON.stringify(reason ? { opinion: reason } : {}),
       });
@@ -148,7 +153,7 @@ function ApprovalView() {
         const txt = await res.text().catch(() => "");
         throw new Error(`${action} 실패 (${res.status}) ${txt}`);
       }
-      navigate(0); // 보통 본문이 없으니 새로고침
+      navigate(0); // 새로고침
       setRejectOpen(false);
       setRejectReason("");
     } catch (e) {
@@ -170,7 +175,7 @@ function ApprovalView() {
         method: "DELETE",
         headers: {
           Accept: "application/json",
-          "X-Employee-Id": myEmpId,    // ✅ 필수
+          "X-Employee-Id": myEmpId, // 필수
         },
       });
       if (!res.ok) {
@@ -194,7 +199,7 @@ function ApprovalView() {
     heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
   };
 
-  const info = statusInfo(doc?.approvalStatus);
+  const infoDoc = statusBadgeInfo(doc?.approvalStatus);
 
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">
@@ -302,7 +307,7 @@ function ApprovalView() {
                         <th className="bg-light" style={{ width: 160 }}>문서번호</th>
                         <td>{doc.approvalDocId}</td>
                         <th className="bg-light" style={{ width: 160 }}>상태</th>
-                        <td><span className={info.cls}>{info.label}</span></td>
+                        <td><span className={infoDoc.cls}>{infoDoc.label}</span></td>
                       </tr>
                       <tr>
                         <th className="bg-light">문서 유형</th>
@@ -348,24 +353,47 @@ function ApprovalView() {
                   <table className="table table-sm align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th className="text-center" style={{ width: 80 }}>순번</th>
-                        <th style={{ width: 200 }}>결재자</th>
-                        <th className="text-center" style={{ width: 120 }}>상태</th>
-                        <th className="text-center" style={{ width: 180 }}>일시</th>
+                        <th className="text-center" style={{ width: 220 }}>결재자</th>
+                        <th className="text-center" style={{ width: 140 }}>상태</th>
+                        <th className="text-center" style={{ width: 200 }}>일시</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(lines.length === 0) ? (
-                        <tr><td colSpan={4} className="text-center text-muted py-4">결재 이력이 없습니다.</td></tr>
+                      {lines.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center text-muted py-4">
+                            결재 이력이 없습니다.
+                          </td>
+                        </tr>
                       ) : (
                         lines.map((l) => {
-                          const li = statusInfo(l.approvalLineStatus);
+                          const li = statusBadgeInfo(l.approvalLineStatus);
+                          const isPending = String(l.approvalLineStatus).toUpperCase() === "PENDING" && !l.approvalLineDate;
                           return (
                             <tr key={l.approvalLineIdx}>
-                              <td className="text-center">{l.approvalSequence}</td>
-                              <td>{l.approvalId}</td>
-                              <td className="text-center"><span className={li.cls}>{li.label}</span></td>
-                              <td className="text-center">{l.approvalLineDate ? fmtDate(l.approvalLineDate) : "-"}</td>
+                              {/* 결재자: 대기면 '-' */}
+                              <td className="text-center">
+                                {isPending ? (
+                                  "-"
+                                ) : (
+                                  <>
+                                    <div className="fw-semibold">{l.approverName || "-"}</div>
+                                    {l.approvalId != null && (
+                                      <div className="small text-muted">{l.approvalId}</div>
+                                    )}
+                                  </>
+                                )}
+                              </td>
+
+                              {/* 상태 */}
+                              <td className="text-center">
+                                <span className={li.cls}>{li.label}</span>
+                              </td>
+
+                              {/* 일시 */}
+                              <td className="text-center">
+                                {l.approvalLineDate ? fmtDate(l.approvalLineDate) : "-"}
+                              </td>
                             </tr>
                           );
                         })

@@ -23,17 +23,14 @@ const fmtDate = (s) => {
 
 function ApprovalList() {
   const [sp, setSp] = useSearchParams();
-
-  // ✅ 페이지 크기 고정
   const SIZE = 10;
 
-  // URL 쿼리 → 초기 상태
   const pageFromQ = Math.max(0, parseInt(sp.get("page") || "0", 10));
   const statusFromQ = sp.get("status") || "ALL";
   const qFromQ = sp.get("q") || "";
 
   const [page, setPage] = useState(pageFromQ);
-  const [status, setStatus] = useState(statusFromQ); // ALL | PENDING | APPROVED | REJECTED
+  const [status, setStatus] = useState(statusFromQ);
   const [q, setQ] = useState(qFromQ);
 
   const [rows, setRows] = useState([]);
@@ -43,7 +40,6 @@ function ApprovalList() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // 쿼리스트링 동기화 (size는 고정이라 기록하지 않음)
   useEffect(() => {
     const next = new URLSearchParams();
     if (page > 0) next.set("page", String(page));
@@ -52,7 +48,6 @@ function ApprovalList() {
     setSp(next, { replace: true });
   }, [page, status, q, setSp]);
 
-  // 목록 로딩
   useEffect(() => {
     const ctrl = new AbortController();
     async function load() {
@@ -61,9 +56,8 @@ function ApprovalList() {
       try {
         const params = new URLSearchParams();
         params.set("page", String(page));
-        params.set("size", String(SIZE));              // ✅ 항상 10개로 요청
+        params.set("size", String(SIZE));
         if (status && status !== "ALL") params.set("status", status);
-        // if (q) params.set("q", q); // 백엔드 검색 미구현이면 유지
 
         const res = await fetch(`${API_BASE}/api/approvals?` + params.toString(), {
           headers: { Accept: "application/json" },
@@ -90,8 +84,7 @@ function ApprovalList() {
     }
     load();
     return () => ctrl.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, status /*, q*/]);
+  }, [page, status]);
 
   const styles = useMemo(() => ({
     hero: {
@@ -106,7 +99,6 @@ function ApprovalList() {
     heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
   }), []);
 
-  // ✅ 버튼 핸들러 (단축평가 대신 if로 명시)
   const goPrev = useCallback(() => {
     if (pageInfo.first) return;
     setPage((p) => Math.max(0, p - 1));
@@ -129,9 +121,7 @@ function ApprovalList() {
       </header>
 
       <main className="container-xxl py-4 flex-grow-1">
-        {/* 상단 바 */}
         <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
-          {/* 상태 필터 */}
           <div className="dropdown">
             <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
               {status === "ALL" ? "전체 상태"
@@ -150,7 +140,6 @@ function ApprovalList() {
             </ul>
           </div>
 
-          {/* 검색 (백엔드 미구현이면 파라미터 전송은 보류) */}
           <div className="input-group" style={{ maxWidth: 520 }}>
             <input
               type="text"
@@ -170,14 +159,12 @@ function ApprovalList() {
           </Link>
         </div>
 
-        {/* 에러 */}
         {err && (
           <div className="alert alert-danger" role="alert">
             {err}
           </div>
         )}
 
-        {/* 목록 */}
         <div className="table-responsive shadow-sm rounded-3 bg-white">
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
@@ -193,7 +180,6 @@ function ApprovalList() {
             <tbody>
               {loading ? (
                 <tr>
-                  {/* 🔁 7 → 6 */}
                   <td colSpan={6} className="text-center py-5">
                     <div className="spinner-border" role="status" aria-hidden="true" />
                     <div className="small mt-2">불러오는 중…</div>
@@ -201,14 +187,12 @@ function ApprovalList() {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  {/* 🔁 7 → 6 */}
                   <td colSpan={6} className="text-center text-muted py-5">데이터가 없습니다.</td>
                 </tr>
               ) : (
                 rows.map((r, idx) => {
                   const info = statusInfo(r.approvalStatus);
                   const displayNo = page * SIZE + (idx + 1);
-                  // ✅ 현재 쿼리스트링 유지해서 상세로
                   const qs = sp.toString();
                   const to = `/ApprovalView/${encodeURIComponent(r.approvalDocId)}${qs ? `?${qs}` : ""}`;
 
@@ -216,9 +200,13 @@ function ApprovalList() {
                     <tr key={r.approvalDocId}>
                       <td className="text-center">{displayNo}</td>
                       <td className="text-truncate" style={{ maxWidth: 900 }}>
-                        <Link to={to} className="link-primary fw-semibold">
+                        <Link to={to} className="link-primary fw-semibold align-middle">
                           {r.approvalTitle || "(제목 없음)"}
                         </Link>
+                        {/* ✅ 제목 오른쪽에 NEW 배지 */}
+                        {r.isNew && (
+                          <span className="badge rounded-pill bg-primary ms-2 align-middle">N</span>
+                        )}
                       </td>
                       <td className="text-center">
                         {r.approvalCategory === "TIMEOFF" ? "휴가/근무 변경"
@@ -236,7 +224,6 @@ function ApprovalList() {
           </table>
         </div>
 
-        {/* 페이지 네비 */}
         <nav className="mt-3 d-flex justify-content-center align-items-center gap-2" aria-label="페이지네이션">
           <button className="btn btn-light border" onClick={() => setPage(0)} disabled={pageInfo.first}>« 처음</button>
           <button className="btn btn-light border" onClick={goPrev} disabled={pageInfo.first}>이전</button>
