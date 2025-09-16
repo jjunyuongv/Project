@@ -1,3 +1,4 @@
+// src/main/java/com/pj/springboot/approval/controller/ApprovalController.java
 package com.pj.springboot.approval.controller;
 
 import java.nio.charset.StandardCharsets;
@@ -66,7 +67,7 @@ public class ApprovalController {
         return service.create(req, author, null);
     }
 
-    // 생성 (멀티파트: data=JSON, file=첨부)
+    // 생성 (멀티파트)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> createMultipart(@RequestPart("data") CreateApprovalReq req,
                                                   @RequestPart(value = "file", required = false) MultipartFile file,
@@ -106,11 +107,12 @@ public class ApprovalController {
                                     @RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "10") int size) {
         int me = Integer.parseInt(eid);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "approvalDate"));
+        // ✅ ApprovalLine 기준이라 'approvalDate' 정렬은 위험 → 정렬 제거(필요 시 approvalLineDate 사용)
+        Pageable pageable = PageRequest.of(page, size);
         return service.myTodo(me, pageable);
     }
 
-    // 삭제 (작성자 or 관리자)
+    // 삭제
     @DeleteMapping("/{docId}")
     public void delete(@PathVariable String docId,
                        @RequestHeader(value = "X-Employee-Id", required = false) String eid) {

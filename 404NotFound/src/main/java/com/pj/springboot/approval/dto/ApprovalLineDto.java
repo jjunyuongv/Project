@@ -14,8 +14,11 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ApprovalLineDto {
     private Integer approvalLineIdx;
-    private Integer approvalId;
+    private Integer approvalId;                     // 사번
     private Integer approvalSequence;
-    private ApprovalLine.LineStatus approvalLineStatus; // ✅ 라인 상태
+    private ApprovalLine.LineStatus approvalLineStatus;
     private LocalDateTime approvalLineDate;
+
+    // 결재자 이름(백엔드에서 채워서 내려줌)
+    private String approverName;
 }

@@ -1,13 +1,16 @@
+// src/main/java/com/pj/springboot/approval/service/ApprovalService.java
 package com.pj.springboot.approval.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +24,6 @@ import com.pj.springboot.approval.dto.ApprovalDetailDto;
 import com.pj.springboot.approval.dto.ApprovalDto;
 import com.pj.springboot.approval.dto.ApprovalLineDto;
 import com.pj.springboot.approval.dto.CreateApprovalReq;
-import com.pj.springboot.approval.dto.UpdateApprovalReq;
 import com.pj.springboot.approval.repository.ApprovalDocRepository;
 import com.pj.springboot.approval.repository.ApprovalLineRepository;
 import com.pj.springboot.approval.repository.TimeoffRequestRepository;
@@ -35,7 +37,7 @@ public class ApprovalService {
     private final TimeoffRequestRepository timeoffRepo;
     private final FileUpload fileUpload;
 
-    // application.properties: app.admin-employee-id=9001
+    // application.properties 에서 주입 (기본값 9001)
     private final Integer adminEmployeeId;
 
     public ApprovalService(ApprovalDocRepository docRepo,
@@ -48,6 +50,7 @@ public class ApprovalService {
         this.timeoffRepo = timeoffRepo;
         this.fileUpload = fileUpload;
         this.adminEmployeeId = adminEmployeeId;
+        System.out.println("[ApprovalService] adminEmployeeId = " + this.adminEmployeeId);
     }
 
     /* 목록 */
@@ -58,15 +61,23 @@ public class ApprovalService {
                 ? docRepo.findAll(pageable)
                 : docRepo.findByApprovalStatus(parsed, pageable);
 
-        return page.map(d -> new ApprovalDto(
-                d.getApprovalDocId(),
-                d.getApprovalTitle(),
-                d.getApprovalContent(),
-                d.getApprovalDate(),
-                d.getApprovalStatus(),
-                d.getApprovalAuthor(),
-                d.getApprovalCategory()
-        ));
+        // ✅ 24시간 내 NEW 플래그 계산 + 수동 매핑
+        LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+        List<ApprovalDto> content = new ArrayList<>();
+        for (ApprovalDoc d : page.getContent()) {
+            boolean isNew = d.getApprovalDate() != null && d.getApprovalDate().isAfter(threshold);
+            content.add(new ApprovalDto(
+                    d.getApprovalDocId(),
+                    d.getApprovalTitle(),
+                    d.getApprovalContent(),
+                    d.getApprovalDate(),
+                    d.getApprovalStatus(),
+                    d.getApprovalAuthor(),
+                    d.getApprovalCategory(),
+                    isNew
+            ));
+        }
+        return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     /* 상세 */
@@ -77,45 +88,43 @@ public class ApprovalService {
 
         List<ApprovalLine> lines = lineRepo.findByDocApprovalDocIdOrderByApprovalSequenceAsc(docId);
 
-        List<ApprovalLineDto> lineDtos = lines.stream()
-                .map(l -> new ApprovalLineDto(
-                        l.getApprovalLineIdx(),
-                        l.getApprovalId(),
-                        l.getApprovalSequence(),
-                        l.getApprovalLineStatus(),
-                        l.getApprovalLineDate()
-                ))
-                .toList();
+        // ✅ stream/Collectors 없이 안전하게 변환 (버전/의존성 상관없음)
+        List<ApprovalLineDto> lineDtos = new ArrayList<>();
+        for (ApprovalLine l : lines) {
+            lineDtos.add(new ApprovalLineDto(
+                    l.getApprovalLineIdx(),
+                    l.getApprovalId(),
+                    l.getApprovalSequence(),
+                    l.getApprovalLineStatus(),
+                    l.getApprovalLineDate(),
+                    null   // approverName: 필요 시 조회해서 채우세요
+            ));
+        }
 
         boolean canApprove = false;
         if (me != null) {
-            canApprove = lineRepo
-                    .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
-                            docId, ApprovalLine.LineStatus.PENDING)
-                    .map(cur -> cur.getApprovalId() != null && cur.getApprovalId().equals(me))
-                    .orElse(false);
+            if (isAdmin(me)) {
+                canApprove = (d.getApprovalStatus() == ApprovalDoc.DocStatus.PENDING);
+            } else {
+                canApprove = lineRepo
+                        .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
+                                docId, ApprovalLine.LineStatus.PENDING)
+                        .map(cur -> cur.getApprovalId() != null && cur.getApprovalId().equals(me))
+                        .orElse(false);
+            }
         }
 
         return new ApprovalDetailDto(
-                d.getApprovalDocId(),
-                d.getApprovalTitle(),
-                d.getApprovalContent(),
-                d.getApprovalDate(),
-                d.getApprovalStatus(),
-                d.getOfile(),
-                d.getSfile(),
-                d.getApprovalAuthor(),
-                d.getApprovalCategory(),
-                lineDtos,
-                canApprove
+                d.getApprovalDocId(), d.getApprovalTitle(), d.getApprovalContent(),
+                d.getApprovalDate(), d.getApprovalStatus(), d.getOfile(), d.getSfile(),
+                d.getApprovalAuthor(), d.getApprovalCategory(), lineDtos, canApprove
         );
     }
 
-    /* 생성: 파일 첨부까지 처리 (멀티파트/JSON 공용) */
+    /* 생성 */
     public String create(CreateApprovalReq req, int author, MultipartFile file) {
         String docId = generateDocId();
 
-        // 1) 문서 생성(한 번만 save, 중간 flush 없음)
         ApprovalDoc d = new ApprovalDoc();
         d.setApprovalDocId(docId);
         d.setApprovalTitle(nz(req.getTitle()));
@@ -128,7 +137,7 @@ public class ApprovalService {
         );
 
         if (file != null && !file.isEmpty()) {
-            FileUpload.Saved saved = fileUpload.save(file, docId); // 저장명 접두어 docId
+            FileUpload.Saved saved = fileUpload.save(file, docId);
             d.setOfile(saved.originalName());
             d.setSfile(saved.savedName());
         } else {
@@ -138,10 +147,8 @@ public class ApprovalService {
 
         docRepo.save(d);
 
-        // 2) 동일한 managed 인스턴스로 자식들 연결(안전)
         ApprovalDoc managed = docRepo.getReferenceById(docId);
 
-        // 결재선
         if (req.getLines() != null && !req.getLines().isEmpty()) {
             req.getLines().stream()
                     .sorted(Comparator.comparing(CreateApprovalReq.LineItem::getApprovalSequence))
@@ -163,7 +170,6 @@ public class ApprovalService {
             lineRepo.save(l1);
         }
 
-        // TIMEOFF (@MapsId 이므로 PK를 직접 세팅하지 않음)
         if (managed.getApprovalCategory() == ApprovalDoc.DocCategory.TIMEOFF && req.getTimeoff() != null) {
             var to = req.getTimeoff();
             TimeoffRequest tr = TimeoffRequest.builder()
@@ -179,13 +185,10 @@ public class ApprovalService {
         return docId;
     }
 
-    // JSON 전용 호출 호환
-    public String create(CreateApprovalReq req, int author) {
-        return create(req, author, null);
-    }
+    public String create(CreateApprovalReq req, int author) { return create(req, author, null); }
 
     /* 수정 */
-    public void update(String docId, UpdateApprovalReq req) {
+    public void update(String docId, com.pj.springboot.approval.dto.UpdateApprovalReq req) {
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
 
@@ -202,7 +205,7 @@ public class ApprovalService {
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
-        if (!meEquals(cur.getApprovalId(), me)) {
+        if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
         }
 
@@ -227,7 +230,7 @@ public class ApprovalService {
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
-        if (!meEquals(cur.getApprovalId(), me)) {
+        if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
         }
 
@@ -247,18 +250,26 @@ public class ApprovalService {
         Page<ApprovalLine> lines = lineRepo.findByApprovalIdAndApprovalLineStatus(
                 me, ApprovalLine.LineStatus.PENDING, pageable);
 
-        return lines.map(l -> {
-            ApprovalDoc d = l.getDoc();
-            return new ApprovalDto(
-                    d.getApprovalDocId(),
-                    d.getApprovalTitle(),
-                    d.getApprovalContent(),
-                    d.getApprovalDate(),
-                    d.getApprovalStatus(),
-                    d.getApprovalAuthor(),
-                    d.getApprovalCategory()
-            );
-        });
+        // ✅ 수동 매핑 + NEW 플래그 계산
+        LocalDateTime threshold = LocalDateTime.now().minusHours(24);
+        List<ApprovalDto> dtos = new ArrayList<>();
+        for (ApprovalLine l : lines.getContent()) {
+            ApprovalDoc d = l.getDoc(); // LAZY여도 트랜잭션 내에서 안전
+            if (d != null) {
+                boolean isNew = d.getApprovalDate() != null && d.getApprovalDate().isAfter(threshold);
+                dtos.add(new ApprovalDto(
+                        d.getApprovalDocId(),
+                        d.getApprovalTitle(),
+                        d.getApprovalContent(),
+                        d.getApprovalDate(),
+                        d.getApprovalStatus(),
+                        d.getApprovalAuthor(),
+                        d.getApprovalCategory(),
+                        isNew
+                ));
+            }
+        }
+        return new PageImpl<>(dtos, pageable, lines.getTotalElements());
     }
 
     /* 삭제: 작성자 또는 관리자만 */
@@ -266,21 +277,19 @@ public class ApprovalService {
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
 
-        boolean isAdmin = (me != null && adminEmployeeId != null && adminEmployeeId.equals(me));
+        boolean admin = isAdmin(me);
         boolean isOwner = (me != null && meEquals(d.getApprovalAuthor(), me));
 
-        if (!(isAdmin || isOwner)) {
+        if (!(admin || isOwner)) {
             throw new SecurityException("삭제 권한이 없습니다.");
         }
-        if (!isAdmin && d.getApprovalStatus() == ApprovalDoc.DocStatus.APPROVED) {
+        if (!admin && d.getApprovalStatus() == ApprovalDoc.DocStatus.APPROVED) {
             throw new SecurityException("승인 완료 문서는 관리자만 삭제할 수 있습니다.");
         }
 
-        // 자식부터 삭제
         timeoffRepo.deleteByApprovalDocId(docId);
         lineRepo.deleteByDocApprovalDocId(docId);
 
-        // 물리 파일 삭제
         if (d.getSfile() != null && !d.getSfile().isBlank()) {
             fileUpload.deleteQuietly(d.getSfile());
         }
@@ -306,6 +315,7 @@ public class ApprovalService {
 
     // ---------- util ----------
     private boolean meEquals(Integer x, int me) { return x != null && x == me; }
+    private boolean isAdmin(Integer me) { return me != null && adminEmployeeId != null && adminEmployeeId.equals(me); }
     private String nz(String s) { return s == null ? "" : s; }
 
     private ApprovalDoc.DocStatus parseStatus(String status) {
