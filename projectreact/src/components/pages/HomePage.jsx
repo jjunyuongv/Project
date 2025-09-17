@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import PlaneTakeoff from 'lucide-react/dist/esm/icons/plane-takeoff.js';
-import Clock         from 'lucide-react/dist/esm/icons/clock.js';
-import MapPin        from 'lucide-react/dist/esm/icons/map-pin.js';
+import Clock from 'lucide-react/dist/esm/icons/clock.js';
+import MapPin from 'lucide-react/dist/esm/icons/map-pin.js';
 import './home.css';
 
 export default function HomePage({ imageUrl, weather, scheduleItems = [] }) {

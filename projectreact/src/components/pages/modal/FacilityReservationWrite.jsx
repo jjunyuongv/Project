@@ -51,15 +51,16 @@ function FacilityReservationWrite(props) {
     }
   }
 
-
-
   useEffect(function () {
+    if (!props.isOpen)
+      return;
+
     if (isLoggedIn) {
       formData.reservationEmployeeId = user.employeeId;
       formData.reservationEmployeeName = user.name;
     }
     setIsEndLoading(true);
-  }, []);
+  }, [!props.isOpen]);
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading && props.isOpen) {

@@ -31,6 +31,8 @@ import MyFacilityReservationList from './components/pages/Facilities/MyFacilityR
 import FacilitiesWrite from './components/pages/Facilities/FacilitiesWrite';
 import FacilitiesEdit from './components/pages/Facilities/FacilitiesEdit';
 import FacilitiesManage from './components/pages/Facilities/FacilitiesManage';
+import AttendanceList from './components/pages/attendance/AttendanceList';
+import AttendanceStats from './components/pages/attendance/AttendanceStats';
 
 // 새로운 라우터 컴포넌트
 const AppRoutes = () => {
@@ -84,6 +86,15 @@ const AppRoutes = () => {
         <Route path="/FacilitiesWrite" element={<ProtectedRoute><FacilitiesWrite baseUrl={url.jsp} /></ProtectedRoute>} />
         <Route path="/FacilitiesEdit" >
           <Route path=":facilityId" element={<ProtectedRoute><FacilitiesEdit baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+        </Route>
+
+        <Route path="/AttendanceList" >
+          <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceList baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+          <Route path=":page/date/:date/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceList baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+        </Route>
+
+        <Route path="/AttendanceStats" >
+          <Route path=":page/month/:month/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceStats baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
         </Route>
       </Routes>
     </>
