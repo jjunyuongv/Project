@@ -86,16 +86,20 @@ function AttendanceList(props) {
 
     if (isLoggedIn) {
       curEmp = await axios.get(dataUrl + "/" + user.employeeId);
-      switch (curEmp.data.attendanceStatus) {
-        case "결근":
-          setEmpState(0);
-          break;
-        case "출근", "지각":
-          setEmpState(1);
-          break;
-        case "퇴근", "조퇴":
-          setEmpState(2);
-          break;
+      if (curEmp !== undefined && curEmp !== null) {
+        switch (curEmp.data.attendanceStatus) {
+          case "결근":
+            setEmpState(0);
+            break;
+          case "출근", "지각":
+            setEmpState(1);
+            break;
+          case "퇴근", "조퇴":
+            setEmpState(2);
+            break;
+        }
+      } else{
+        alert("금일 근태 정보가 등록되지 않았습니다.");
       }
     }
     setCount(countResp.data);
@@ -104,12 +108,12 @@ function AttendanceList(props) {
   }
 
   const checkIn = async () => {
-    if(!confirm("출근처리 하시겠습니까?")){
+    if (!confirm("출근처리 하시겠습니까?")) {
       return;
     }
     if (isLoggedIn) {
       let response = await axios.post("/api/attendances/checkin/" + user.employeeId);
-      if(response.data === 1){
+      if (response.data === 1) {
         alert("출근시각이 저장되었습니다.");
         getData();
       } else {
@@ -119,12 +123,12 @@ function AttendanceList(props) {
   }
 
   const checkOut = async () => {
-    if(!confirm("퇴근처리 하시겠습니까?")){
+    if (!confirm("퇴근처리 하시겠습니까?")) {
       return;
     }
     if (isLoggedIn) {
       let response = await axios.post("/api/attendances/checkout/" + user.employeeId);
-      if(response.data === 1){
+      if (response.data === 1) {
         alert("퇴근시각이 저장되었습니다.");
         getData();
       } else {
