@@ -117,6 +117,7 @@ CREATE TABLE employees (
     employee_id INT NOT NULL,
     employee_loginid VARCHAR(50) NOT NULL UNIQUE,
     employee_name VARCHAR(50) NOT NULL,
+    employee_gender VARCHAR(10) NOT NULL, 
     employee_email VARCHAR(100) NOT NULL UNIQUE,
     employee_address VARCHAR(255),
     employee_phone VARCHAR(20),
@@ -126,8 +127,8 @@ CREATE TABLE employees (
     employee_department VARCHAR(50),
     employee_job VARCHAR(50),
     PRIMARY KEY (employee_id)
-); 
-
+);
+drop table employees;
 -- -------------------------------------------------------- 현준
 -- 시설물 정보 테이블
 CREATE TABLE `facilities` (
@@ -150,156 +151,18 @@ CREATE TABLE `facility_reservations` (
   `reservation_date` datetime NOT NULL,
   PRIMARY KEY (`reservation_id`)
 );
+-- 근태관리
+CREATE TABLE attendances (
+    attendance_id BIGINT AUTO_INCREMENT,
+    attendance_employee_id INT NOT NULL,
+    attendance_date DATE NOT NULL,
+    attendance_start TIME,
+    attendance_end TIME,
+    attendance_status VARCHAR(100) NOT NULL,
+    attendance_reason VARCHAR(255) NULL,
+    attendance_edit_employee_id INT,
+    PRIMARY KEY (attendance_id)
+);
 
--- -----------------------------------------------------------------------------------------------------
--- 전자 결재 더미
-USE `404notfound`;
--- =========================
--- 1) 전자결재 문서 11건
--- =========================
-INSERT INTO approval_doc
-(approval_doc_id, approval_title, approval_content, approval_date, approval_status, ofile, sfile, approval_author, approval_category)
-VALUES
--- 1 APPROVED / TIMEOFF
-('AP-2025-0001',
- '하계 연차 신청(김유진)',
- '여름 휴가 사용 신청드립니다.\n기간: ○○월 ○○일 ~ ○○월 ○○일\n업무 인수인계 완료했습니다.',
- NOW() - INTERVAL 1 DAY + INTERVAL 9 HOUR, 'APPROVED',
- '연차신청서_김유진.pdf', 'A1B2C3_2025_01.pdf', 1003, 'TIMEOFF'),
-
--- 2 PENDING / SHIFT
-('AP-2025-0002',
- '야간 근무 교대 요청(7/12)',
- '개인 사정으로 7/12 야간 근무를 7/14 야간과 교대 요청드립니다.\n대상자: 1008',
- NOW() - INTERVAL 2 DAY + INTERVAL 10 HOUR, 'PENDING',
- NULL, NULL, 1005, 'SHIFT'),
-
--- 3 REJECTED / ETC
-('AP-2025-0003',
- '장비 점검 비용 승인 요청(UPS 배터리 교체)',
- 'UPS 배터리 교체 견적서 첨부합니다.\n금액: 1,280,000원(부가세 별도)\n교체 필요 사유: 수명 만료',
- NOW() - INTERVAL 3 DAY + INTERVAL 11 HOUR, 'REJECTED',
- '견적서_UPS.pdf', 'UPS_QO_2409.pdf', 1010, 'ETC'),
-
--- 4 PENDING / TIMEOFF (SICK)
-('AP-2025-0004',
- '병가 신청(이서연)',
- '감기 증상으로 2일 병가 신청드립니다.\n진단서는 귀가 후 업로드 예정입니다.',
- NOW() - INTERVAL 1 DAY + INTERVAL 14 HOUR, 'PENDING',
- NULL, NULL, 1007, 'TIMEOFF'),
-
--- 5 APPROVED / ETC
-('AP-2025-0005',
- '정비 지원 인력 파견 요청(현장 A-3)',
- '현장 A-3 긴급 장애 대응을 위해 정비 2인 파견 요청드립니다.\n기간: 금일 14:00~18:00',
- NOW() - INTERVAL 4 DAY + INTERVAL 9 HOUR, 'APPROVED',
- NULL, NULL, 1002, 'ETC'),
-
--- 6 APPROVED / SHIFT
-('AP-2025-0006',
- '주간 근무 교대 조정(운영1팀)',
- '운영1팀 주간 근무 스케줄 조정안입니다.\n변경 대상: 1011 ↔ 1009',
- NOW() - INTERVAL 5 DAY + INTERVAL 9 HOUR, 'APPROVED',
- '교대표.xlsx', 'SFT_SWAP_01.xlsx', 1006, 'SHIFT'),
-
--- 7 REJECTED / TIMEOFF (HALF)
-('AP-2025-0007',
- '반차 신청(오전, 김민수)',
- '오전 병원 진료로 반차 사용 신청합니다.',
- NOW() - INTERVAL 2 DAY + INTERVAL 8 HOUR, 'REJECTED',
- NULL, NULL, 1004, 'TIMEOFF'),
-
--- 8 PENDING / ETC
-('AP-2025-0008',
- '비상발령 대응 계획 결재',
- '태풍 북상에 따른 비상 대응 계획서 결재 요청드립니다.\n주요 내용: 비상연락망, 대체근무, 복구절차',
- NOW() - INTERVAL 0 DAY + INTERVAL 9 HOUR, 'PENDING',
- '대응계획서_v1.1.pdf', 'EMG_PLAN_1_1.pdf', 1001, 'ETC'),
-
--- 9 APPROVED / TIMEOFF (ANNUAL)
-('AP-2025-0009',
- '연차 사용 신청(가족 행사)',
- '가족 행사로 연차 1일 사용 신청합니다.',
- NOW() - INTERVAL 6 DAY + INTERVAL 10 HOUR, 'APPROVED',
- NULL, NULL, 1009, 'TIMEOFF'),
-
--- 10 APPROVED / ETC
-('AP-2025-0010',
- '서버실 출입 권한 추가 요청(보안팀 협조)',
- '신규 프로젝트 투입으로 서버실 임시 출입 권한 2주간 요청드립니다.',
- NOW() - INTERVAL 3 DAY + INTERVAL 15 HOUR, 'APPROVED',
- NULL, NULL, 1011, 'ETC'),
-
--- 11 REJECTED / SHIFT
-('AP-2025-0011',
- '주말 특근 승인 요청(데이터 마이그레이션)',
- '마이그레이션 작업 일정상 주말 특근 승인을 요청드립니다.\n일시: 토 09:00~18:00',
- NOW() - INTERVAL 7 DAY + INTERVAL 9 HOUR, 'REJECTED',
- NULL, NULL, 1008, 'SHIFT');
-
--- =========================
--- 2) 결재선(결재자 사번은 예시)
---    규칙:
---    - APPROVED: 전 라인 APPROVED + 시간 기록
---    - REJECTED: 1번 APPROVED, 2번 REJECTED
---    - PENDING : 1번 PENDING (2번은 옵션)
--- =========================
-
--- AP-2025-0001 (APPROVED) : 2명 승인
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0001', 2001, 1, 'APPROVED', NOW() - INTERVAL 1 DAY + INTERVAL 10 HOUR),
-('AP-2025-0001', 3001, 2, 'APPROVED', NOW() - INTERVAL 1 DAY + INTERVAL 12 HOUR);
-
--- AP-2025-0002 (PENDING) : 1번 대기
-INSERT INTO approval_line VALUES
-(NULL, 'AP-2025-0002', 2005, 1, 'PENDING', NULL);
-
--- AP-2025-0003 (REJECTED) : 1 승인, 2 반려
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0003', 2003, 1, 'APPROVED', NOW() - INTERVAL 3 DAY + INTERVAL 12 HOUR),
-('AP-2025-0003', 3003, 2, 'REJECTED', NOW() - INTERVAL 3 DAY + INTERVAL 14 HOUR);
-
--- AP-2025-0004 (PENDING) : 1번 대기
-INSERT INTO approval_line VALUES
-(NULL, 'AP-2025-0004', 2007, 1, 'PENDING', NULL);
-
--- AP-2025-0005 (APPROVED) : 1명 승인
-INSERT INTO approval_line VALUES
-(NULL, 'AP-2025-0005', 2002, 1, 'APPROVED', NOW() - INTERVAL 4 DAY + INTERVAL 10 HOUR);
-
--- AP-2025-0006 (APPROVED) : 2명 승인
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0006', 2006, 1, 'APPROVED', NOW() - INTERVAL 5 DAY + INTERVAL 10 HOUR),
-('AP-2025-0006', 3006, 2, 'APPROVED', NOW() - INTERVAL 5 DAY + INTERVAL 12 HOUR);
-
--- AP-2025-0007 (REJECTED) : 1 승인, 2 반려
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0007', 2004, 1, 'APPROVED', NOW() - INTERVAL 2 DAY + INTERVAL 9 HOUR),
-('AP-2025-0007', 3004, 2, 'REJECTED', NOW() - INTERVAL 2 DAY + INTERVAL 11 HOUR);
-
--- AP-2025-0008 (PENDING) : 1번 대기
-INSERT INTO approval_line VALUES
-(NULL, 'AP-2025-0008', 2001, 1, 'PENDING', NULL);
-
--- AP-2025-0009 (APPROVED) : 1명 승인
-INSERT INTO approval_line VALUES
-(NULL, 'AP-2025-0009', 2009, 1, 'APPROVED', NOW() - INTERVAL 6 DAY + INTERVAL 11 HOUR);
-
--- AP-2025-0010 (APPROVED) : 2명 승인
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0010', 2011, 1, 'APPROVED', NOW() - INTERVAL 3 DAY + INTERVAL 16 HOUR),
-('AP-2025-0010', 3011, 2, 'APPROVED', NOW() - INTERVAL 3 DAY + INTERVAL 18 HOUR);
-
--- AP-2025-0011 (REJECTED) : 1 승인, 2 반려
-INSERT INTO approval_line(approval_doc_id, approval_id, approval_sequence, approval_line_status, approval_line_date) VALUES
-('AP-2025-0011', 2008, 1, 'APPROVED', NOW() - INTERVAL 7 DAY + INTERVAL 10 HOUR),
-('AP-2025-0011', 3008, 2, 'REJECTED', NOW() - INTERVAL 7 DAY + INTERVAL 12 HOUR);
-
--- =========================
--- 3) 휴가 상세 (TIMEOFF 문서만)
--- =========================
-INSERT INTO timeoff_request(timeoff_id, timeoff_type, timeoff_start, timeoff_end, timeoff_reason) VALUES
-('AP-2025-0001', 'ANNUAL', DATE(NOW()) + INTERVAL 7 DAY,  DATE(NOW()) + INTERVAL 10 DAY, '하계 휴가(국내 여행)'),
-('AP-2025-0004', 'SICK',   DATE(NOW()) + INTERVAL 1 DAY,  DATE(NOW()) + INTERVAL 2 DAY,  '감기 증상으로 휴식 필요'),
-('AP-2025-0007', 'HALF',   DATE(NOW()) + INTERVAL 0 DAY,  DATE(NOW()) + INTERVAL 0 DAY,  '오전 병원 진료'),
-('AP-2025-0009', 'ANNUAL', DATE(NOW()) + INTERVAL 3 DAY,  DATE(NOW()) + INTERVAL 3 DAY,  '가족 행사(결혼식 참여)');
+select * from employees;
+delete from employees where employee_name = "준영";
