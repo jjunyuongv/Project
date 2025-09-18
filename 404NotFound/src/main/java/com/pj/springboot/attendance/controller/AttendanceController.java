@@ -127,8 +127,8 @@ public class AttendanceController {
 	//////////////////////////
 
 	// 사원별 근태 월별 통계 개수
-	@GetMapping("count/month/{month}/page/{page}/{size}")
-	public Long countWithMonth(@PathVariable String month, @PathVariable int page, @PathVariable int size) {
+	@GetMapping("/count/month/{month}")
+	public Long countWithMonth(@PathVariable String month) {
 		LocalDate start = LocalDate.parse(month + "-01");
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 		return attendancesService.getStatCount(start, end);

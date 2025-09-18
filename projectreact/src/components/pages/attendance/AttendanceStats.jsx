@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
-import ModalController from "../modal/ModalController";
 
 
 function AttendanceStats(props) {
@@ -40,6 +39,7 @@ function AttendanceStats(props) {
       response = await axios.get(dataUrl + "/month/" + month + "/page/" + page + "/" + pageSize);
     }
 
+    console.log(countResp.data);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -50,6 +50,8 @@ function AttendanceStats(props) {
   }, []);
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
   }, [page, searchField, searchWord, month]);
 

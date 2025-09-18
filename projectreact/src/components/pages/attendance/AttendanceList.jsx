@@ -86,7 +86,7 @@ function AttendanceList(props) {
 
     if (isLoggedIn) {
       curEmp = await axios.get(dataUrl + "/" + user.employeeId);
-      if (curEmp !== undefined && curEmp !== null) {
+      if (curEmp.data !== "") {
         switch (curEmp.data.attendanceStatus) {
           case "결근":
             setEmpState(0);
@@ -98,8 +98,9 @@ function AttendanceList(props) {
             setEmpState(2);
             break;
         }
-      } else{
+      } else {
         alert("금일 근태 정보가 등록되지 않았습니다.");
+        insertToday();
       }
     }
     setCount(countResp.data);
@@ -137,23 +138,26 @@ function AttendanceList(props) {
     }
   }
 
-  // const insertToday = async () => {
-  //   let response = [];
-  //   let dataUrl = props.baseUrl + "/api/attendances";
-  //   response = await axios.post(dataUrl);
-  //   if (response.data === 1) {
-  //     alert("오늘 등록 성공");
-  //   } else {
-  //     alert("오류가 났거나 이미 등록됨");
-  //   }
-  // }
+  // 오늘 근태 ROW추가 자동으로 9:20분에 추가되도록 했지만 서버를 계속 켜놔야하기때문에
+  // 데이터가 없을 때 추가하도록 함
+  const insertToday = async () => {
+    let response = [];
+    let dataUrl = props.baseUrl + "/api/attendances";
+    response = await axios.post(dataUrl);
+    if (response.data === 1) {
+      alert("오늘 등록 성공");
+    } else {
+      alert("오류가 났거나 이미 등록됨");
+    }
+  }
 
   useEffect(function () {
-    // insertToday();
     getData();
   }, []);
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
   }, [page, searchField, searchWord, date]);
 
@@ -185,6 +189,10 @@ function AttendanceList(props) {
     e.preventDefault();
     const now = new Date();
     navigate("/AttendanceStats/1/month/" + now.getFullYear() + "-" + String((now.getMonth() + 1)).padStart(2, "0"));
+  }
+
+  function goHome() {
+    navigate("/");
   }
 
   const searchData = async (e) => {

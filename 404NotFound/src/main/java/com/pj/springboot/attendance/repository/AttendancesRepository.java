@@ -71,15 +71,15 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 			+ " WHERE a.attendanceDate BETWEEN :start AND :end " + " GROUP BY e.employeeId, e.name ")
 	Page<AttendanceStatDTO> getStats(LocalDate start, LocalDate end, Pageable pageable);
 
-	@Query("SELECT COUNT(DISTINCT a.attendanceEmployeeId.employeeId) " + " FROM Attendances a "
+	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e "
 			+ " WHERE a.attendanceDate BETWEEN :start AND :end ")
 	long countByAttendanceDateBetween(LocalDate start, LocalDate end);
 
-	@Query("SELECT COUNT(DISTINCT a.attendanceEmployeeId.employeeId) " + " FROM Attendances a "
+	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e"
 			+ " WHERE a.attendanceEmployeeId.name LIKE :employeeName AND a.attendanceDate BETWEEN :start AND :end ")
 	long countByAttendanceEmployeeId_NameLikeAndAttendanceDateBetween(String employeeName, LocalDate start, LocalDate end);
 	
-	@Query("SELECT COUNT(DISTINCT a.attendanceEmployeeId.employeeId) " + " FROM Attendances a "
+	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e"
 			+ " WHERE a.attendanceEmployeeId.employeeId = :employeeId AND a.attendanceDate BETWEEN :start AND :end ")
 	long countByAttendanceEmployeeId_EmployeeIdAndAttendanceDateBetween(int employeeId, LocalDate start, LocalDate end);
 

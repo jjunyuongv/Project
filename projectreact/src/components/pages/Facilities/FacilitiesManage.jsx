@@ -91,6 +91,8 @@ function FacilitiesManage(props) {
   }, []);
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
   }, [page, searchField, searchWord]);
 

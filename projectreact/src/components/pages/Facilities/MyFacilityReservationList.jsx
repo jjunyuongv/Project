@@ -60,6 +60,8 @@ function MyFacilityReservationList(props) {
   }
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
   }, [page]);
 

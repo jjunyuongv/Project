@@ -110,6 +110,8 @@ function FacilityReservationApproval(props) {
   }, []);
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
   }, [page, searchField, searchWord]);
 

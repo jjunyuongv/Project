@@ -202,8 +202,9 @@ public class AttendancesService {
 	}
 
 	public AttendanceDTO getOne(int employeeId) {
-		return new AttendanceDTO(attendancesRepository
-				.findByAttendanceDateAndAttendanceEmployeeId_EmployeeId(LocalDate.now(), employeeId));
+		Attendances entity = attendancesRepository
+				.findByAttendanceDateAndAttendanceEmployeeId_EmployeeId(LocalDate.now(), employeeId);
+		return entity != null ? new AttendanceDTO(entity) : null;
 	}
 
 	public List<AttendanceStatDTO> getStatsWithPage(LocalDate start, LocalDate end, int page, int size) {
