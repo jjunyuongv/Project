@@ -2,7 +2,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
-import NavigatePage from "./template/NavigatePage";
+import NavigatePage from "../Facilities/template/NavigatePage";
 import ModalController from "../modal/ModalController";
 import { useAuth } from "../reportform/AuthContext";
 

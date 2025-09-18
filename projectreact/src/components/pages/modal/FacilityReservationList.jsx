@@ -18,7 +18,7 @@ function FacilityReservationList(props) {
 
   const [respData, setRespData] = useState();
   const [count, setCount] = useState(0);
-  const pageSize = 3;
+  const pageSize = 5;
   const blockSize = 3;
   const [isEndLoading, setIsEndLoading] = useState(false);
   let searchChange = false;
@@ -162,7 +162,7 @@ function FacilityReservationList(props) {
 
         <div>
           <Button className="basic-button mt-3" onClick={() => {
-            props.closeModal();
+            props.closeModal(true);
             setIsEndLoading(false);
           }}>닫기</Button>
         </div>
