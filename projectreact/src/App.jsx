@@ -18,9 +18,6 @@ import ApprovalList from './components/pages/approval/ApprovalList';
 import ApprovalView from './components/pages/approval/ApprovalView';
 import ApprovalEdit from './components/pages/approval/ApprovalEdit';
 import ApprovalWrite from './components/pages/Approval/ApprovalWrite';
-import ReportList from './components/pages/reportform/ReportList';
-import ReportWrite from './components/pages/reportform/ReportWrite';
-import ReportApproval from './components/pages/reportform/ReportApproval';
 import FindId from './components/pages/reportform/FindId';
 import FindPassword from './components/pages/reportform/FindPassword';
 
@@ -33,6 +30,7 @@ import FacilitiesEdit from './components/pages/Facilities/FacilitiesEdit';
 import FacilitiesManage from './components/pages/Facilities/FacilitiesManage';
 import AttendanceList from './components/pages/attendance/AttendanceList';
 import AttendanceStats from './components/pages/attendance/AttendanceStats';
+import LocationMain from './components/pages/Location/LocationMain';
 
 // 새로운 라우터 컴포넌트
 const AppRoutes = () => {
@@ -53,24 +51,30 @@ const AppRoutes = () => {
     <>
       <Navbar />
       <Routes>
+        {/* 윤아 */}
         <Route path="/" element={<HomePage imageUrl="/Generated.png" />} />
-        <Route path="/Login" element={<Login />} />
-        <Route path="/Signup" element={<Signup />} />
-        <Route path="/FindId" element={<FindId />} />
-        <Route path="/FindPassword" element={<FindPassword />} />
         <Route path="/Calendars" element={<ProtectedRoute><Calendars /></ProtectedRoute>} />
+
+        {/* 준영 */}
         <Route path="/ApprovalList" element={<ProtectedRoute><ApprovalList /></ProtectedRoute>} />
         <Route path='/ApprovalView/:num' element={<ProtectedRoute><ApprovalView /></ProtectedRoute>} />
         <Route path="/ApprovalWrite" element={<ProtectedRoute><ApprovalWrite /></ProtectedRoute>} />
         <Route path="/ApprovalEdit" element={<ProtectedRoute><ApprovalEdit /></ProtectedRoute>} />
         <Route path="/ChatMain" element={<ProtectedRoute><ChatMain /></ProtectedRoute>} />
+        <Route path="/LocationMain" element={<LocationMain />} />
+
+        {/* 현석 */}
+        <Route path="/Login" element={<Login />} />
+        <Route path="/Signup" element={<Signup />} />
+        <Route path="/FindId" element={<FindId />} />
+        <Route path="/FindPassword" element={<FindPassword />} />
+
+        {/* 혜원 */}
         <Route path="/BoardPage" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
         <Route path="/ViewPage" element={<ProtectedRoute><ViewPage /></ProtectedRoute>} />
         <Route path="/WritePage" element={<ProtectedRoute><WritePage /></ProtectedRoute>} />
-        <Route path="/ReportList" element={<ProtectedRoute><ReportList /></ProtectedRoute>} />
-        <Route path="/ReportWrite" element={<ProtectedRoute><ReportWrite /></ProtectedRoute>} />
-        <Route path="/ReportApproval" element={<ProtectedRoute><ReportApproval /></ProtectedRoute>} />
 
+        {/* 현준 */}
         <Route path="/FacilitiesList" >
           <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilitiesList baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
         </Route>

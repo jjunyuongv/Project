@@ -49,6 +49,7 @@ export default function Navbar() {
                         <NavLink to="/Calendars" className={linkClass}>일정</NavLink>
                         <NavLink to="/FacilitiesList/1" className={linkClass}>시설물</NavLink>
                         <NavLink to="/AttendanceList/1" className={linkClass}>근태</NavLink>
+                        <NavLink to="LocationMain" className={linkClass}>오시는길</NavLink>
                     </nav>
 
                     {/* 로그인 / 로그아웃 영역 */}
