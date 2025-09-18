@@ -1,0 +1,102 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f8f9fa;
+}
+
+.login-card {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+  width: 400px;
+}
+
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.google-btn {
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 12px;     /* 기존보다 조금 좁게 */
+  border-radius: 50px;   /* 모서리 완전 둥글게 */
+  font-weight: 500;
+  cursor: pointer;
+  width: 180px;           /* 원하는 폭으로 조정 */
+}
+
+.kakao-btn {
+  background: #FEE500;
+  border: none;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 50px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 180px;
+}
+
+.social-logo {
+  width: 20px;
+  height: 20px;
+}
+
+.signup-link {
+  color: #0d6efd;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+
+/* 추가로 필요한 모달 스타일 (이전 답변에 드린 내용) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 90%;
+    width: 300px;
+}
+.modal-message {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.black-link {
+    color: #000 !important; /* 글자색을 검은색으로 강제 적용 */
+    font-weight: bold;/* 밑줄을 제거하여 깔끔하게 만듭니다 */
+    text-decoration: none; 
+}
+
+.black-link:hover {
+    text-decoration: underline !important; /* 마우스 오버 시 밑줄 다시 표시 */
+}

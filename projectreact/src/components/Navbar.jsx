@@ -1,9 +1,9 @@
 // @ts-nocheck
 import React, { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { useAuth } from './pages/reportform/AuthContext';
+import { useAuth } from './pages/LoginForm/AuthContext';
 import "./navbar.css";
-import "./pages/reportform/modal.css";
+import "./pages/LoginForm/modal.css";
 
 const linkClass = ({ isActive }) => `nav-link${isActive ? " active" : ""}`;
 
@@ -44,12 +44,12 @@ export default function Navbar() {
                     <nav className="nav-links" aria-label="주요 메뉴">
                         <NavLink to="/ApprovalList" className={linkClass}>결재</NavLink>
                         <NavLink to="/BoardPage" className={linkClass}>문서보관</NavLink>
-                        <NavLink to="/ReportList" className={linkClass}>업무보고</NavLink>
                         <NavLink to="/ChatMain" className={linkClass}>메신저</NavLink>
                         <NavLink to="/Calendars" className={linkClass}>일정</NavLink>
                         <NavLink to="/FacilitiesList/1" className={linkClass}>시설물</NavLink>
                         <NavLink to="/AttendanceList/1" className={linkClass}>근태</NavLink>
                         <NavLink to="LocationMain" className={linkClass}>오시는길</NavLink>
+                        <NavLink to="/MyPage" className={linkClass}>마이페이지</NavLink>
                     </nav>
 
                     {/* 로그인 / 로그아웃 영역 */}
@@ -69,7 +69,7 @@ export default function Navbar() {
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <p className="modal-message">로그아웃되었습니다.</p>
-                        <button onClick={handleConfirmLogout} className="btn-primary">확인</button>
+                        <button onClick={handleConfirmLogout} className="btn-primary-KHS">확인</button>
                     </div>
                 </div>
             )}

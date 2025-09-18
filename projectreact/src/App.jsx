@@ -2,8 +2,8 @@
 import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
-import ProtectedRoute from './components/pages/reportform/ProtectedRoute';
-import { AuthProvider, useAuth } from './components/pages/reportform/AuthContext'; // useAuth 추가
+import ProtectedRoute from './components/pages/LoginForm/ProtectedRoute';
+import { AuthProvider, useAuth } from './components/pages/LoginForm/AuthContext'; // useAuth 추가
 
 import Navbar from './components/Navbar';
 import HomePage from './components/pages/HomePage';
@@ -12,14 +12,15 @@ import ViewPage from './components/pages/boardForm/ViewPage';
 import WritePage from './components/pages/boardForm/WritePage';
 import Calendars from './components/pages/calendars/calendars';
 import ChatMain from './components/pages/chatfrom/chatmain';
-import Login from './components/pages/reportform/Login';
-import Signup from './components/pages/reportform/Signup';
+import Login from './components/pages/LoginForm/Login';
+import Signup from './components/pages/LoginForm/Signup';
 import ApprovalList from './components/pages/approval/ApprovalList';
 import ApprovalView from './components/pages/approval/ApprovalView';
 import ApprovalEdit from './components/pages/approval/ApprovalEdit';
 import ApprovalWrite from './components/pages/Approval/ApprovalWrite';
-import FindId from './components/pages/reportform/FindId';
-import FindPassword from './components/pages/reportform/FindPassword';
+import FindId from './components/pages/LoginForm/FindId';
+import FindPassword from './components/pages/LoginForm/FindPassword';
+import MyPage from './components/pages/LoginForm/MyPage';
 
 import './App.css';
 import FacilitiesList from './components/pages/Facilities/FacilitiesList';
@@ -68,6 +69,7 @@ const AppRoutes = () => {
         <Route path="/Signup" element={<Signup />} />
         <Route path="/FindId" element={<FindId />} />
         <Route path="/FindPassword" element={<FindPassword />} />
+        <Route path="/MyPage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} /> 
 
         {/* 혜원 */}
         <Route path="/BoardPage" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />

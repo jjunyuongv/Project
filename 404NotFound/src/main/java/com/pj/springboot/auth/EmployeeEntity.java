@@ -12,9 +12,9 @@ import lombok.*;
 @Builder
 public class EmployeeEntity {
 
-	@Id
-	@Column(name = "employee_id")
-	private int employeeId; // 또는 private Long employeeId;
+    @Id
+    @Column(name = "employee_id")
+    private int employeeId; // 또는 private Long employeeId;
 
     @Column(name = "employee_loginid", nullable = false, unique = true)
     private String loginId;
@@ -39,4 +39,14 @@ public class EmployeeEntity {
 
     @Column(name = "employee_role")
     private String role = "USER";
+
+    // ✅ 추가 필드: 부서(category)와 직무(job)
+    @Column(name = "employee_department")
+    private String department;
+
+    @Column(name = "employee_job")
+    private String job;
+    
+    @Column(name = "employee_gender")
+    private String gender;
 }

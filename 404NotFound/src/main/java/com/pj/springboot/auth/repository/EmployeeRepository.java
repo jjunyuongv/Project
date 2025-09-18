@@ -15,6 +15,8 @@ public interface EmployeeRepository extends JpaRepository<EmployeeEntity, Intege
 	boolean existsByLoginId(String loginId);
 
 	boolean existsByEmail(String email);
+	
+	boolean existsByLoginIdAndEmail(String loginId, String email);
 
 	@Query("SELECT COUNT(e) FROM EmployeeEntity e WHERE FUNCTION('YEAR', e.createDate) = :year")
 	long countByYear(@Param("year") int year);

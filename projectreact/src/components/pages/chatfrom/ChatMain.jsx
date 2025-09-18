@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./chat.css";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { useAuth } from "../reportform/AuthContext";
+import { useAuth } from "../LoginForm/AuthContext";
 
 /* =============================== */
 /* ========== REST API =========== */

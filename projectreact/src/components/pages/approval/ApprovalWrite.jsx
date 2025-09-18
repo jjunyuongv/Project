@@ -1,7 +1,7 @@
 // src/components/pages/approval/ApprovalWrite.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../reportform/AuthContext.jsx";
+import { useAuth } from "../LoginForm/AuthContext.jsx";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 const DEFAULT_APPROVER_ID = Number(import.meta?.env?.VITE_DEFAULT_APPROVER_ID ?? "9001");
