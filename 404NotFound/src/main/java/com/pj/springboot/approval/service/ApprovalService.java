@@ -1,7 +1,6 @@
-// src/main/java/com/pj/springboot/approval/service/ApprovalService.java
 package com.pj.springboot.approval.service;
 
-import java.time.Duration;                    // ✅ 추가
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -38,24 +37,24 @@ public class ApprovalService {
     private final TimeoffRequestRepository timeoffRepo;
     private final FileUpload fileUpload;
 
-    // application.properties 에서 주입 (기본값 9001)
+    // ✅ application.properties 에서 주입 (기본값 제거 → 설정 없으면 null)
     private final Integer adminEmployeeId;
 
-    // ✅ NEW 배지 유지시간(기본 24시간). 예) PT24H, PT3H, PT30M, PT1S 등
+    // NEW 뱃지 유지시간(기본 24시간)
     private final Duration newBadgeDuration;
 
     public ApprovalService(ApprovalDocRepository docRepo,
                            ApprovalLineRepository lineRepo,
                            TimeoffRequestRepository timeoffRepo,
                            FileUpload fileUpload,
-                           @Value("${app.admin-employee-id:9001}") Integer adminEmployeeId,
-                           @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration) {  // ✅ 추가
+                           @Value("${app.admin-employee-id:#{null}}") Integer adminEmployeeId,
+                           @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration) {
         this.docRepo = docRepo;
         this.lineRepo = lineRepo;
         this.timeoffRepo = timeoffRepo;
         this.fileUpload = fileUpload;
         this.adminEmployeeId = adminEmployeeId;
-        this.newBadgeDuration = newBadgeDuration;  // ✅ 저장
+        this.newBadgeDuration = newBadgeDuration;
 
         System.out.println("[ApprovalService] adminEmployeeId = " + this.adminEmployeeId);
         System.out.println("[ApprovalService] newBadgeDuration = " + this.newBadgeDuration);
@@ -69,7 +68,6 @@ public class ApprovalService {
                 ? docRepo.findAll(pageable)
                 : docRepo.findByApprovalStatus(parsed, pageable);
 
-        // ✅ NEW 배지 기준시각을 설정값으로 계산
         LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration);
 
         List<ApprovalDto> content = new ArrayList<>();
@@ -105,7 +103,7 @@ public class ApprovalService {
                     l.getApprovalSequence(),
                     l.getApprovalLineStatus(),
                     l.getApprovalLineDate(),
-                    null
+                    null // 필요 시 이름 조회해 세팅
             ));
         }
 
@@ -122,11 +120,21 @@ public class ApprovalService {
             }
         }
 
-        return new ApprovalDetailDto(
-                d.getApprovalDocId(), d.getApprovalTitle(), d.getApprovalContent(),
-                d.getApprovalDate(), d.getApprovalStatus(), d.getOfile(), d.getSfile(),
-                d.getApprovalAuthor(), d.getApprovalCategory(), lineDtos, canApprove
-        );
+        // ✅ 전체필드 생성자 대신 세터로 안전하게 구성
+        ApprovalDetailDto dto = new ApprovalDetailDto();
+        dto.setApprovalDocId(d.getApprovalDocId());
+        dto.setApprovalTitle(d.getApprovalTitle());
+        dto.setApprovalContent(d.getApprovalContent());
+        dto.setApprovalDate(d.getApprovalDate());
+        dto.setApprovalStatus(d.getApprovalStatus());
+        dto.setOfile(d.getOfile());
+        dto.setSfile(d.getSfile());
+        dto.setApprovalAuthor(d.getApprovalAuthor());
+        dto.setApprovalCategory(d.getApprovalCategory());
+        dto.setLines(lineDtos);
+        dto.setCanApprove(canApprove);
+
+        return dto;
     }
 
     /* 생성 */
@@ -213,8 +221,14 @@ public class ApprovalService {
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
+        // 권한 체크
         if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
+        }
+
+        // ✅ 관리자 대리 승인 시 실제 결재자(me)로 기록
+        if (isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
+            cur.setApprovalId(me);
         }
 
         cur.setApprovalLineStatus(ApprovalLine.LineStatus.APPROVED);
@@ -238,8 +252,14 @@ public class ApprovalService {
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
+        // 권한 체크
         if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
+        }
+
+        // ✅ 관리자 대리 반려 시 실제 결재자(me)로 기록
+        if (isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
+            cur.setApprovalId(me);
         }
 
         cur.setApprovalLineStatus(ApprovalLine.LineStatus.REJECTED);
@@ -258,7 +278,7 @@ public class ApprovalService {
         Page<ApprovalLine> lines = lineRepo.findByApprovalIdAndApprovalLineStatus(
                 me, ApprovalLine.LineStatus.PENDING, pageable);
 
-        LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration); // ✅ 동일 기준
+        LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration);
 
         List<ApprovalDto> dtos = new ArrayList<>();
         for (ApprovalLine l : lines.getContent()) {
@@ -322,7 +342,11 @@ public class ApprovalService {
 
     // ---------- util ----------
     private boolean meEquals(Integer x, int me) { return x != null && x == me; }
-    private boolean isAdmin(Integer me) { return me != null && adminEmployeeId != null && adminEmployeeId.equals(me); }
+
+    private boolean isAdmin(Integer me) {
+        return me != null && adminEmployeeId != null && adminEmployeeId.equals(me);
+    }
+
     private String nz(String s) { return s == null ? "" : s; }
 
     private ApprovalDoc.DocStatus parseStatus(String status) {

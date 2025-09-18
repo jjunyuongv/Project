@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
+const DEV_EMP_ID = import.meta?.env?.VITE_DEV_EMP_ID || null;
 
 /* localStorage("me")에서 로그인 사용자 정보 읽기 */
 function useCurrentUser() {
@@ -29,11 +30,16 @@ function useCurrentUser() {
 
 /* 여러 필드 중 숫자형 사번 뽑기 */
 function extractEmpId(me) {
-  const cand = [me?.employeeId, me?.userId, me?.username, me?.loginId];
+  const cand = [
+    me?.employeeId, me?.employee_id, me?.empId, me?.emp_id,
+    me?.userId, me?.user_id, me?.id,
+    me?.username, me?.loginId, me?.login_id,
+    me?.member?.employeeId, me?.employee?.employeeId
+  ];
   for (const c of cand) {
     if (c == null) continue;
-    const n = Number(c);
-    if (Number.isFinite(n)) return String(n);
+    const digits = String(c).match(/\d+/g)?.join("") ?? "";
+    if (digits.length >= 3) return digits;
   }
   return null;
 }
@@ -71,8 +77,8 @@ function ApprovalView() {
   const docId = id ?? num;
 
   const me = useCurrentUser();
-  const myEmpId = extractEmpId(me);
-  const ADMIN_EMP_ID = "20250001"; // 필요시 .env로 분리
+  const myEmpIdFromMe = extractEmpId(me);
+  const myEmpId = myEmpIdFromMe || DEV_EMP_ID || null;
 
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,12 +97,17 @@ function ApprovalView() {
       setLoading(true); setErr(null);
       try {
         const headers = { Accept: "application/json" };
-        if (myEmpId) headers["X-Employee-Id"] = myEmpId;
+        if (myEmpId) {
+          headers["X-Employee-Id"] = myEmpId;
+        } else {
+          console.warn("[ApprovalView] 사번을 찾지 못했습니다. 상세 권한 플래그는 false로 내려올 수 있습니다.");
+        }
         const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
           headers, signal: ctrl.signal,
         });
         if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
         const data = await res.json();
+        console.debug("[ApprovalView] 상세 응답:", data);
         setDoc(data);
       } catch (e) {
         if (e.name !== "AbortError") setErr(e.message || String(e));
@@ -113,31 +124,26 @@ function ApprovalView() {
     return [...arr].sort((a, b) => (a.approvalSequence ?? 0) - (b.approvalSequence ?? 0));
   }, [doc]);
 
-  // 관리자 여부
-  const isAdmin =
-    (myEmpId && myEmpId === ADMIN_EMP_ID) ||
-    (Array.isArray(me?.roles) && me.roles.includes("ROLE_ADMIN"));
-
-  // 승인/반려 버튼 노출
-  const canDecide =
-    doc?.approvalStatus === "PENDING" && (doc?.canApprove === true || isAdmin);
-
-  // 삭제 권한
-  const isOwner = useMemo(() => {
-    if (!doc || !myEmpId) return false;
-    return String(doc.approvalAuthor) === String(myEmpId);
-  }, [doc, myEmpId]);
+  // 서버 플래그 우선, 없는 경우 폴백
+  const canDecide = useMemo(() => {
+    if (!doc) return false;
+    if (typeof doc.canApprove === "boolean") {
+      return doc.approvalStatus === "PENDING" && doc.canApprove === true;
+    }
+    return false;
+  }, [doc]);
 
   const canDelete = useMemo(() => {
     if (!doc) return false;
-    if (isAdmin) return true;
-    if (doc.approvalStatus === "APPROVED") return false;
-    return isOwner;
-  }, [doc, isAdmin, isOwner]);
+    if (typeof doc.canDelete === "boolean") return doc.canDelete === true;
+    const isOwner = myEmpId && String(doc.approvalAuthor) === String(myEmpId);
+    return isOwner && doc.approvalStatus !== "APPROVED";
+  }, [doc, myEmpId]);
 
   // 승인/반려
   const decide = async (action, reason) => {
     if (!docId) return;
+    if (!myEmpId) { alert("로그인 정보(사번)를 찾지 못했습니다. 다시 로그인해 주세요."); return; }
     setDeciding(true);
     try {
       const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}/${action}`, {
@@ -145,7 +151,7 @@ function ApprovalView() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          "X-Employee-Id": myEmpId, // 필수
+          "X-Employee-Id": myEmpId,
         },
         body: JSON.stringify(reason ? { opinion: reason } : {}),
       });
@@ -153,7 +159,7 @@ function ApprovalView() {
         const txt = await res.text().catch(() => "");
         throw new Error(`${action} 실패 (${res.status}) ${txt}`);
       }
-      navigate(0); // 새로고침
+      navigate(0);
       setRejectOpen(false);
       setRejectReason("");
     } catch (e) {
@@ -166,6 +172,7 @@ function ApprovalView() {
   // 삭제
   const handleDelete = async () => {
     if (!docId) return;
+    if (!myEmpId) { alert("로그인 정보(사번)를 찾지 못했습니다. 다시 로그인해 주세요."); return; }
     if (!window.confirm(`정말 삭제할까요?\n\n문서번호: ${doc?.approvalDocId}\n제목: ${doc?.approvalTitle || ""}`)) {
       return;
     }
@@ -175,7 +182,7 @@ function ApprovalView() {
         method: "DELETE",
         headers: {
           Accept: "application/json",
-          "X-Employee-Id": myEmpId, // 필수
+          "X-Employee-Id": myEmpId,
         },
       });
       if (!res.ok) {
@@ -211,6 +218,13 @@ function ApprovalView() {
       </header>
 
       <main className="container-xxl py-4 flex-grow-1">
+        {/* 상단 경고: 헤더 미전송 시 안내 */}
+        {!myEmpId && (
+          <div className="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+            <div>로그인 사번을 찾지 못해 권한 버튼이 숨겨질 수 있습니다. (localStorage "me" 확인)</div>
+          </div>
+        )}
+
         {/* 상단 버튼 */}
         <div className="d-flex flex-wrap gap-2 justify-content-end mb-3">
           <Link to={`/ApprovalList${loc.search || ""}`} className="btn btn-light border shadow-sm">
@@ -225,7 +239,7 @@ function ApprovalView() {
               className="btn btn-outline-danger"
               onClick={handleDelete}
               disabled={deleting}
-              title={isAdmin ? "관리자 권한으로 삭제" : "작성자 본인이 삭제"}
+              title="삭제 권한 있음"
             >
               {deleting ? (
                 <>
@@ -359,7 +373,7 @@ function ApprovalView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {lines.length === 0 ? (
+                      {(lines?.length ?? 0) === 0 ? (
                         <tr>
                           <td colSpan={3} className="text-center text-muted py-4">
                             결재 이력이 없습니다.
@@ -371,24 +385,15 @@ function ApprovalView() {
                           const isPending = String(l.approvalLineStatus).toUpperCase() === "PENDING" && !l.approvalLineDate;
                           return (
                             <tr key={l.approvalLineIdx}>
-                              {/* 결재자: 대기면 '-' */}
+                              {/* ✅ 결재자: 대기면 '-' , 완료면 사번만 표시 */}
                               <td className="text-center">
-                                {isPending ? (
-                                  "-"
-                                ) : (
-                                  <>
-                                    <div className="fw-semibold">{l.approverName || "-"}</div>
-                                    {l.approvalId != null && (
-                                      <div className="small text-muted">{l.approvalId}</div>
-                                    )}
-                                  </>
-                                )}
+                                {isPending
+                                  ? "-"
+                                  : (l.approvalId != null ? String(l.approvalId) : "-")}
                               </td>
 
                               {/* 상태 */}
-                              <td className="text-center">
-                                <span className={li.cls}>{li.label}</span>
-                              </td>
+                              <td className="text-center"><span className={li.cls}>{li.label}</span></td>
 
                               {/* 일시 */}
                               <td className="text-center">

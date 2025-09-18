@@ -1,4 +1,3 @@
-// src/main/java/com/pj/springboot/approval/controller/ApprovalController.java
 package com.pj.springboot.approval.controller;
 
 import java.nio.charset.StandardCharsets;
@@ -51,7 +50,7 @@ public class ApprovalController {
         return service.listApprovals(status, pageable);
     }
 
-    // 상세
+    // 상세 (헤더 없어도 조회 가능)
     @GetMapping("/{docId}")
     public ApprovalDetailDto detail(@PathVariable String docId,
                                     @RequestHeader(value = "X-Employee-Id", required = false) String eid) {
@@ -59,20 +58,20 @@ public class ApprovalController {
         return service.getApproval(docId, me);
     }
 
-    // 생성 (JSON)
+    // 생성 (JSON) — 헤더 필수
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public String create(@RequestBody CreateApprovalReq req,
-                         @RequestHeader(value = "X-Employee-Id", required = false) String eid) {
-        int author = parseIntOrDefault(eid, 1001);
+                         @RequestHeader("X-Employee-Id") String eid) {
+        int author = Integer.parseInt(eid);
         return service.create(req, author, null);
     }
 
-    // 생성 (멀티파트)
+    // 생성 (멀티파트) — 헤더 필수
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> createMultipart(@RequestPart("data") CreateApprovalReq req,
                                                   @RequestPart(value = "file", required = false) MultipartFile file,
-                                                  @RequestHeader(value = "X-Employee-Id", required = false) String eid) {
-        int author = parseIntOrDefault(eid, 1001);
+                                                  @RequestHeader("X-Employee-Id") String eid) {
+        int author = Integer.parseInt(eid);
         String docId = service.create(req, author, file);
         return ResponseEntity.ok(docId);
     }
@@ -107,7 +106,6 @@ public class ApprovalController {
                                     @RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "10") int size) {
         int me = Integer.parseInt(eid);
-        // ✅ ApprovalLine 기준이라 'approvalDate' 정렬은 위험 → 정렬 제거(필요 시 approvalLineDate 사용)
         Pageable pageable = PageRequest.of(page, size);
         return service.myTodo(me, pageable);
     }
@@ -152,8 +150,5 @@ public class ApprovalController {
     private Integer parseIntOrNull(String s) {
         try { return s == null ? null : Integer.parseInt(s); }
         catch (Exception e) { return null; }
-    }
-    private int parseIntOrDefault(String s, int def) {
-        try { return Integer.parseInt(s); } catch (Exception e) { return def; }
     }
 }

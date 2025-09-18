@@ -1,3 +1,4 @@
+// src/main/java/com/pj/springboot/approval/dto/ApprovalDetailDto.java
 package com.pj.springboot.approval.dto;
 
 import java.time.LocalDateTime;
@@ -24,5 +25,10 @@ public class ApprovalDetailDto {
     private Integer approvalAuthor;
     private ApprovalDoc.DocCategory approvalCategory;
     private List<ApprovalLineDto> lines;
-    private boolean canApprove; // 현재 사용자가 결재 가능 여부
+
+    /** 현재 사용자가 결재 가능 여부 */
+    private boolean canApprove;
+
+    /** 현재 사용자가 삭제 가능 여부 (서버가 규칙대로 계산해서 내려줌) */
+    private boolean canDelete;
 }
