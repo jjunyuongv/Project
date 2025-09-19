@@ -24,8 +24,12 @@ function AttendanceList(props) {
   const searchDate = date === undefined ? "" : date;
 
   // 로그인 관련
+  // 로그인 관련
   const { isLoggedIn, user } = useAuth();
-  let isManager = user.role === "MANAGER" ? true : false;
+  let isManager = false;
+  if (isLoggedIn) {
+    isManager = user.role === "MANAGER" ? true : false;
+  }
 
   // modal창에게 주고싶은 데이터
   const [parentData, setParentData] = useState({

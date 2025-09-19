@@ -21,7 +21,10 @@ function AttendanceStats(props) {
 
   // 로그인 관련
   const { isLoggedIn, user } = useAuth();
-  let isManager = user.role === "MANAGER" ? true : false;
+  let isManager = false;
+  if (isLoggedIn) {
+    isManager = user.role === "MANAGER" ? true : false;
+  }
 
   const formDataHandler = (e) => {
     setFormData({

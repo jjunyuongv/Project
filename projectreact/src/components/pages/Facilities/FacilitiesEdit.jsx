@@ -25,8 +25,10 @@ function FacilitiesEdit(props) {
   const facilityType = ["회의실", "주차장", "식당", "교육실", "사무실"];
   // 로그인 관련
   const { isLoggedIn, user } = useAuth();
-  let isManager = user.role === "MANAGER" ? true : false;
-  // let isManager = false;
+  let isManager = false;
+  if (isLoggedIn) {
+    isManager = user.role === "MANAGER" ? true : false;
+  }
 
   const formDataHandler = (e) => {
     setFormData({
