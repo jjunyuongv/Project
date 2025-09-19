@@ -18,7 +18,7 @@ CREATE TABLE SHIFT_MEMOS(
  CONTENT TEXT NOT NULL,
  PRIMARY KEY (MEMO_ID)
  );
-
+drop table calendars;
 ----------------------------------------------------- 준영
 -- 전자결재 문서 테이블 
 CREATE TABLE approval_doc(
@@ -166,3 +166,5 @@ CREATE TABLE attendances (
 
 select * from employees;
 delete from employees where employee_name = "준영";
+SELECT * FROM `EVENT` ORDER BY EVENT_ID DESC;
+

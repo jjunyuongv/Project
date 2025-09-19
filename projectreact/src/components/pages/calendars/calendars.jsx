@@ -4,12 +4,20 @@ import "./calendars.css";
 const DAY_START = 6;
 const HOUR_HEIGHT = 44;
 
+// ===== utils =====
 function stripTime(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
-function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
 function toISODate(d){ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function pad2(n){ return String(n).padStart(2,"0"); }
 function hoursRange(start,end){ return Array.from({length:end-start+1},(_,i)=>start+i); }
+function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function betweenDate(a,b,c){ return a.getTime() <= c.getTime() && c.getTime() <= b.getTime(); }
+function fmtHM(min){ const h=Math.floor(min/60), m=min%60; return `${pad2(h)}:${pad2(m)}`; }
 
+// ===== API endpoint =====
+// 백엔드 컨트롤러: com.pj.springboot.calendar.controller.EventController (/api/events)
+const EVENTS_URL = "/api/events";
+
+// ===== calendar helpers =====
 function getWeekInfo(base){
   const day = base.getDay();
   const monday = stripTime(new Date(base));
@@ -47,28 +55,28 @@ function getCalendarDays(base){
   return days;
 }
 
-function labelByType(t){ return ({flight:"비행 일정",maintenance:"정비 일정",training:"교육 일정",vacation:"휴가 일정"}[t]||t); }
-function colorByType(t){ return ({flight:"#46C075",maintenance:"#FF9800",training:"#1E88E5",vacation:"#8E44AD"}[t]||"#9e9e9e"); }
-function iconByType(t){ return ({flight:"✈️",maintenance:"🔧",training:"📚",vacation:"🏖️"}[t]||"📅"); }
-function fmtHM(min){ const h=Math.floor(min/60), m=min%60; return `${pad2(h)}:${pad2(m)}`; }
+// ========== 타입/색상/아이콘 ==========
+function labelByType(t){ return ({flight:"비행 일정",maintenance:"정비 일정",training:"교육 일정",vacation:"휴가 일정",shift:"근무 변경"}[t]||t); }
+function colorByType(t){ return ({flight:"#46C075",maintenance:"#FF9800",training:"#1E88E5",vacation:"#8E44AD",shift:"#03a9f4"}[t]||"#9e9e9e"); }
+function iconByType(t){ return ({flight:"✈️",maintenance:"🔧",training:"📚",vacation:"🏖️",shift:"📋"}[t]||"📅"); }
+
+// ====== 서버 EVENT → 프런트 타입 매핑 ======
+// backend category: 'ANNUAL'|'HALF'|'SICK'|'SHIFT'
+const toFrontendType = (category) => (category === "SHIFT" ? "shift" : "vacation");
+
+// ========== 컴포넌트 ==========
 
 export default function Calendars({ initialDate = new Date(), NavbarComponent, onAddSchedule }) {
   const [viewMode, setViewMode] = useState("month");
   const [baseDate, setBaseDate] = useState(stripTime(initialDate));
-  const [filters, setFilters] = useState({ flight:true, maintenance:true, training:true, vacation:true });
+  const [filters, setFilters] = useState({
+    flight:true, maintenance:true, training:true, vacation:true, shift:true
+  });
   const [data, setData] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [stats] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const typesParam = useMemo(
-    () => Object.entries(filters).filter(([,v])=>v).map(([k])=>k).join(","),
-    [filters]
-  );
-  const pxPerMin = HOUR_HEIGHT / 60;
-
-  useEffect(() => { setData(null); setLoading(false); }, [viewMode, baseDate, typesParam]);
-  useEffect(() => { setStats(null); }, [baseDate, typesParam]);
-
+  // === fallback (빈 달력) ===
   const monthFallback = useMemo(() => {
     const days = getCalendarDays(baseDate).map(d => ({ date: toISODate(d.date), isCurrentMonth: d.isCurrentMonth, day: d.day, events: [] }));
     return { title: `${baseDate.getFullYear()}년 ${baseDate.getMonth()+1}월`, days };
@@ -78,7 +86,7 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
     const { monday, sunday, daysOfWeek } = getWeekInfo(baseDate);
     const hours = hoursRange(DAY_START, 22);
     const columns = daysOfWeek.map(({date,label})=>({ date: toISODate(date), label, events: [] }));
-    return { monday: monday.toISOString().slice(0,10), sunday: sunday.toISOString().slice(0,10), hours, columns };
+    return { monday: toISODate(monday), sunday: toISODate(sunday), hours, columns };
   }, [baseDate]);
 
   const dayFallback = useMemo(() => ({ date: toISODate(baseDate), hours: hoursRange(DAY_START, 22), events: [] }), [baseDate]);
@@ -89,6 +97,132 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
   const monthData = data?.days ? data : monthFallback;
   const weekData  = viewMode==="week" ? (data?.columns ? data : weekFallback) : null;
   const dayData   = viewMode==="day"  ? (data?.hours ? data : dayFallback) : null;
+
+  // ====== 서버에서 이벤트 가져오기 + 가공 ======
+  // 가시 범위 계산
+  const { fetchStartISO, fetchEndISO } = useMemo(() => {
+    if (viewMode === "month") {
+      const grid = getCalendarDays(baseDate);
+      const start = stripTime(grid[0].date);
+      const end   = stripTime(grid[grid.length - 1].date);
+      return { fetchStartISO: toISODate(start), fetchEndISO: toISODate(end) };
+    }
+    if (viewMode === "week") {
+      const { monday, sunday } = getWeekInfo(baseDate);
+      return { fetchStartISO: toISODate(monday), fetchEndISO: toISODate(sunday) };
+    }
+    // day
+    return { fetchStartISO: toISODate(baseDate), fetchEndISO: toISODate(baseDate) };
+  }, [viewMode, baseDate]);
+
+  // 주기적 새로고침(120초)
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(()=>setTick(v=>v+1), 120000); return ()=>clearInterval(t); }, []);
+
+  // fetch
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true);
+        const resp = await fetch(`${EVENTS_URL}?start=${fetchStartISO}&end=${fetchEndISO}`, { credentials: "include" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const list = await resp.json(); // [{eventId, crewEmployeeId, title, content, startDate, endDate, category}, ...]
+
+        if (cancelled) return;
+
+        // 필터링 + 타입 변환
+        const mapped = list.map(ev => ({
+          id: ev.eventId,
+          title: ev.title,
+          start: ev.startDate,      // 'YYYY-MM-DD'
+          end: ev.endDate || ev.startDate,
+          type: toFrontendType(ev.category), // 'vacation' | 'shift'
+          color: undefined,
+          raw: ev
+        })).filter(ev => {
+          if (ev.type === "vacation" && !filters.vacation) return false;
+          if (ev.type === "shift"    && !filters.shift) return false;
+          return true;
+        });
+
+        // 뷰별 가공
+        if (viewMode === "month") {
+          const grid = getCalendarDays(baseDate);
+          const byDate = new Map(grid.map(d => [toISODate(d.date), []]));
+          mapped.forEach(ev => {
+            const s = new Date(ev.start+"T00:00:00");
+            const e = new Date(ev.end+"T00:00:00");
+            for (let d = new Date(s); d <= e; d = addDays(d, 1)) {
+              const key = toISODate(d);
+              if (byDate.has(key)) {
+                byDate.get(key).push({
+                  id: ev.id,
+                  title: ev.title,
+                  type: ev.type,
+                  color: ev.color || colorByType(ev.type)
+                });
+              }
+            }
+          });
+
+          const days = grid.map(d => ({
+            date: toISODate(d.date),
+            isCurrentMonth: d.isCurrentMonth,
+            day: d.day,
+            events: byDate.get(toISODate(d.date)) || []
+          }));
+
+          setData({ title: `${baseDate.getFullYear()}년 ${baseDate.getMonth()+1}월`, days });
+        }
+        else if (viewMode === "week") {
+          const { monday, sunday, daysOfWeek } = getWeekInfo(baseDate);
+          const hours = hoursRange(DAY_START, 22);
+          const cols = daysOfWeek.map(({date,label}) => {
+            const iso = toISODate(date);
+            const events = mapped.filter(ev => {
+              const s = new Date(ev.start+"T00:00:00");
+              const e = new Date(ev.end+"T00:00:00");
+              return betweenDate(s, e, date);
+            }).map(ev => ({
+              id: ev.id,
+              title: ev.title,
+              type: ev.type,
+              color: ev.color || colorByType(ev.type),
+              startMin: DAY_START*60,
+              endMin: (DAY_START*60)+60
+            }));
+            return { date: iso, label, events };
+          });
+          setData({ monday: toISODate(monday), sunday: toISODate(sunday), hours, columns: cols });
+        }
+        else { // day
+          const hours = hoursRange(DAY_START, 22);
+          const current = stripTime(baseDate);
+          const events = mapped.filter(ev => {
+            const s = new Date(ev.start+"T00:00:00");
+            const e = new Date(ev.end+"T00:00:00");
+            return betweenDate(s, e, current);
+          }).map(ev => ({
+            id: ev.id,
+            title: ev.title,
+            type: ev.type,
+            color: ev.color || colorByType(ev.type),
+            startMin: DAY_START*60,
+            endMin: (DAY_START*60)+60
+          }));
+          setData({ date: toISODate(baseDate), hours, events });
+        }
+      } catch (e) {
+        console.error("load events failed", e);
+        setData(null); // fallback 사용
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [viewMode, baseDate, filters.vacation, filters.shift, fetchStartISO, fetchEndISO, tick]);
 
   return (
     <div className="schedule-root">
@@ -112,7 +246,7 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
             <section className="card">
               <h3>필터</h3>
               <div className="filters">
-                {["flight","maintenance","training","vacation"].map(t=>(
+                {["flight","maintenance","training","vacation","shift"].map(t=>(
                   <label key={t} className="filter-item">
                     <input type="checkbox" checked={!!filters[t]} onChange={e=>setFilters(p=>({...p,[t]:e.target.checked}))}/>
                     {labelByType(t)}

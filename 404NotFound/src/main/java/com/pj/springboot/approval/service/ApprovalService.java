@@ -28,6 +28,9 @@ import com.pj.springboot.approval.repository.ApprovalDocRepository;
 import com.pj.springboot.approval.repository.ApprovalLineRepository;
 import com.pj.springboot.approval.repository.TimeoffRequestRepository;
 
+// ✅ 역할(Role) 확인을 위해 사원 레포지토리 사용
+import com.pj.springboot.auth.repository.EmployeeRepository;
+
 @Service
 @Transactional
 public class ApprovalService {
@@ -37,27 +40,27 @@ public class ApprovalService {
     private final TimeoffRequestRepository timeoffRepo;
     private final FileUpload fileUpload;
 
-    // ✅ application.properties 에서 주입 (기본값 제거 → 설정 없으면 null)
-    private final Integer adminEmployeeId;
+    // ✅ 역할 기반 권한을 위해 추가
+    private final EmployeeRepository employeeRepo;
 
-    // NEW 뱃지 유지시간(기본 24시간)
+    // NEW 배지 유지 시간
     private final Duration newBadgeDuration;
 
+    /**
+     * ✅ 더 이상 adminEmployeeId 주입 없음 (관리자 사번 정책 제거)
+     */
     public ApprovalService(ApprovalDocRepository docRepo,
                            ApprovalLineRepository lineRepo,
                            TimeoffRequestRepository timeoffRepo,
                            FileUpload fileUpload,
-                           @Value("${app.admin-employee-id:#{null}}") Integer adminEmployeeId,
+                           EmployeeRepository employeeRepo,
                            @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration) {
         this.docRepo = docRepo;
         this.lineRepo = lineRepo;
         this.timeoffRepo = timeoffRepo;
         this.fileUpload = fileUpload;
-        this.adminEmployeeId = adminEmployeeId;
+        this.employeeRepo = employeeRepo;
         this.newBadgeDuration = newBadgeDuration;
-
-        System.out.println("[ApprovalService] adminEmployeeId = " + this.adminEmployeeId);
-        System.out.println("[ApprovalService] newBadgeDuration = " + this.newBadgeDuration);
     }
 
     /* 목록 */
@@ -87,7 +90,10 @@ public class ApprovalService {
         return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
-    /* 상세 */
+    /* 상세
+     * - canApprove: 문서가 PENDING이고 (매니저) 또는 (현재 PENDING 라인의 결재자 == me)
+     * - canDelete: (매니저) 또는 (작성자이며 승인 완료 전)
+     */
     @Transactional(readOnly = true)
     public ApprovalDetailDto getApproval(String docId, Integer me) {
         ApprovalDoc d = docRepo.findById(docId)
@@ -103,24 +109,38 @@ public class ApprovalService {
                     l.getApprovalSequence(),
                     l.getApprovalLineStatus(),
                     l.getApprovalLineDate(),
-                    null // 필요 시 이름 조회해 세팅
+                    null // 필요 시 결재자 이름 채워 넣을 수 있음
             ));
         }
 
         boolean canApprove = false;
+        boolean canDelete  = false;
+
         if (me != null) {
-            if (isAdmin(me)) {
-                canApprove = (d.getApprovalStatus() == ApprovalDoc.DocStatus.PENDING);
+            boolean manager = isManager(me);
+
+            // 결재 가능?
+            if (d.getApprovalStatus() == ApprovalDoc.DocStatus.PENDING) {
+                if (manager) {
+                    canApprove = true; // 매니저는 대기 중 문서 결재 가능(대리 결재 허용)
+                } else {
+                    canApprove = lineRepo
+                            .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
+                                    docId, ApprovalLine.LineStatus.PENDING)
+                            .map(cur -> meEquals(cur.getApprovalId(), me))
+                            .orElse(false);
+                }
+            }
+
+            // 삭제 가능?
+            boolean isOwner = meEquals(d.getApprovalAuthor(), me);
+            if (manager) {
+                canDelete = true; // 매니저는 승인 완료 문서도 삭제 가능
             } else {
-                canApprove = lineRepo
-                        .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
-                                docId, ApprovalLine.LineStatus.PENDING)
-                        .map(cur -> cur.getApprovalId() != null && cur.getApprovalId().equals(me))
-                        .orElse(false);
+                canDelete = isOwner && (d.getApprovalStatus() != ApprovalDoc.DocStatus.APPROVED);
             }
         }
 
-        // ✅ 전체필드 생성자 대신 세터로 안전하게 구성
         ApprovalDetailDto dto = new ApprovalDetailDto();
         dto.setApprovalDocId(d.getApprovalDocId());
         dto.setApprovalTitle(d.getApprovalTitle());
@@ -132,7 +152,8 @@ public class ApprovalService {
         dto.setApprovalAuthor(d.getApprovalAuthor());
         dto.setApprovalCategory(d.getApprovalCategory());
         dto.setLines(lineDtos);
-        dto.setCanApprove(canApprove);
+        dto.setCanApprove(canApprove); // ✅ 서버가 규칙대로 계산해서 내려줌
+        dto.setCanDelete(canDelete);   // ✅ 서버가 규칙대로 계산해서 내려줌
 
         return dto;
     }
@@ -178,6 +199,7 @@ public class ApprovalService {
                         lineRepo.save(l);
                     });
         } else {
+            // 결재선이 없으면 본인 1단계 기본 생성
             ApprovalLine l1 = new ApprovalLine();
             l1.setDoc(managed);
             l1.setApprovalId(author);
@@ -214,21 +236,20 @@ public class ApprovalService {
         docRepo.save(d);
     }
 
-    /* 승인 */
+    /* 승인 (매니저는 대리 승인 가능) */
     public void approve(String docId, int me, String opinion) {
         ApprovalLine cur = lineRepo
                 .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
-        // 권한 체크
-        if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
+        boolean manager = isManager(me);
+
+        if (!manager && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
         }
-
-        // ✅ 관리자 대리 승인 시 실제 결재자(me)로 기록
-        if (isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
-            cur.setApprovalId(me);
+        if (manager && !meEquals(cur.getApprovalId(), me)) {
+            cur.setApprovalId(me); // 대리 승인 기록
         }
 
         cur.setApprovalLineStatus(ApprovalLine.LineStatus.APPROVED);
@@ -245,21 +266,20 @@ public class ApprovalService {
         }
     }
 
-    /* 반려 */
+    /* 반려 (매니저는 대리 반려 가능) */
     public void reject(String docId, int me, String opinion) {
         ApprovalLine cur = lineRepo
                 .findFirstByDocApprovalDocIdAndApprovalLineStatusOrderByApprovalSequenceAsc(
                         docId, ApprovalLine.LineStatus.PENDING)
                 .orElseThrow(() -> new IllegalStateException("결재할 단계가 없습니다."));
 
-        // 권한 체크
-        if (!isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
+        boolean manager = isManager(me);
+
+        if (!manager && !meEquals(cur.getApprovalId(), me)) {
             throw new SecurityException("이 문서의 결재 권한이 없습니다.");
         }
-
-        // ✅ 관리자 대리 반려 시 실제 결재자(me)로 기록
-        if (isAdmin(me) && !meEquals(cur.getApprovalId(), me)) {
-            cur.setApprovalId(me);
+        if (manager && !meEquals(cur.getApprovalId(), me)) {
+            cur.setApprovalId(me); // 대리 반려 기록
         }
 
         cur.setApprovalLineStatus(ApprovalLine.LineStatus.REJECTED);
@@ -272,7 +292,7 @@ public class ApprovalService {
         docRepo.save(d);
     }
 
-    /* 내 결재할 문서 */
+    /* 내 결재할 문서 (본인 차례) */
     @Transactional(readOnly = true)
     public Page<ApprovalDto> myTodo(int me, Pageable pageable) {
         Page<ApprovalLine> lines = lineRepo.findByApprovalIdAndApprovalLineStatus(
@@ -300,21 +320,22 @@ public class ApprovalService {
         return new PageImpl<>(dtos, pageable, lines.getTotalElements());
     }
 
-    /* 삭제: 작성자 또는 관리자만 */
+    /* 삭제: (매니저) 또는 (작성자 & 미승인) */
     public void delete(String docId, Integer me) {
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
 
-        boolean admin = isAdmin(me);
+        boolean manager = isManager(me);
         boolean isOwner = (me != null && meEquals(d.getApprovalAuthor(), me));
 
-        if (!(admin || isOwner)) {
+        if (!(manager || isOwner)) {
             throw new SecurityException("삭제 권한이 없습니다.");
         }
-        if (!admin && d.getApprovalStatus() == ApprovalDoc.DocStatus.APPROVED) {
-            throw new SecurityException("승인 완료 문서는 관리자만 삭제할 수 있습니다.");
+        if (!manager && d.getApprovalStatus() == ApprovalDoc.DocStatus.APPROVED) {
+            throw new SecurityException("승인 완료 문서는 매니저만 삭제할 수 있습니다.");
         }
 
+        // 하위 리소스 정리
         timeoffRepo.deleteByApprovalDocId(docId);
         lineRepo.deleteByDocApprovalDocId(docId);
 
@@ -341,10 +362,15 @@ public class ApprovalService {
     }
 
     // ---------- util ----------
+
     private boolean meEquals(Integer x, int me) { return x != null && x == me; }
 
-    private boolean isAdmin(Integer me) {
-        return me != null && adminEmployeeId != null && adminEmployeeId.equals(me);
+    // ✅ 역할 기반 권한: role == "MANAGER" 면 매니저로 간주 (대소문자 무시)
+    private boolean isManager(Integer me) {
+        if (me == null) return false;
+        return employeeRepo.findById(me)
+                .map(emp -> "MANAGER".equalsIgnoreCase(String.valueOf(emp.getRole())))
+                .orElse(false);
     }
 
     private String nz(String s) { return s == null ? "" : s; }

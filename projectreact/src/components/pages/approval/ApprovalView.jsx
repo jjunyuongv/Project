@@ -1,11 +1,14 @@
 // src/pages/ApprovalView.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 const DEV_EMP_ID = import.meta?.env?.VITE_DEV_EMP_ID || null;
 
-/* localStorage("me")에서 로그인 사용자 정보 읽기 */
+// 프로젝트 구조에 맞춰 경로 확인: { useAuth }가 맞는지(네임드) / default 인지 꼭 확인!
+import { useAuth } from "../LoginForm/AuthContext";
+
+/* localStorage("me")에서 로그인 사용자 정보 읽기 (폴백용) */
 function useCurrentUser() {
   const [me, setMe] = useState(() => {
     try {
@@ -76,9 +79,20 @@ function ApprovalView() {
   const { id, num } = useParams();
   const docId = id ?? num;
 
+  // ✅ 로그인/역할: 네가 준 isManager 스타일 그대로 사용
+  const { isLoggedIn, user } = useAuth();
+  let isManager = false;
+  if (isLoggedIn) {
+    isManager = user?.role === "MANAGER" ? true : false;
+  }
+
+  // 폴백용 localStorage me
   const me = useCurrentUser();
-  const myEmpIdFromMe = extractEmpId(me);
-  const myEmpId = myEmpIdFromMe || DEV_EMP_ID || null;
+
+  // ✅ 사번 추출 우선순위: user → localStorage("me") → DEV_EMP_ID
+  const myEmpIdFromUser = extractEmpId(user);
+  const myEmpIdFromMe   = extractEmpId(me);
+  const myEmpId = myEmpIdFromUser || myEmpIdFromMe || DEV_EMP_ID || null;
 
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,7 +121,6 @@ function ApprovalView() {
         });
         if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
         const data = await res.json();
-        console.debug("[ApprovalView] 상세 응답:", data);
         setDoc(data);
       } catch (e) {
         if (e.name !== "AbortError") setErr(e.message || String(e));
@@ -124,7 +137,7 @@ function ApprovalView() {
     return [...arr].sort((a, b) => (a.approvalSequence ?? 0) - (b.approvalSequence ?? 0));
   }, [doc]);
 
-  // 서버 플래그 우선, 없는 경우 폴백
+  // 서버 canApprove 우선(없으면 false로 간주)
   const canDecide = useMemo(() => {
     if (!doc) return false;
     if (typeof doc.canApprove === "boolean") {
@@ -133,12 +146,17 @@ function ApprovalView() {
     return false;
   }, [doc]);
 
+  // 서버 canDelete 우선(없으면 작성자 & 미승인)
   const canDelete = useMemo(() => {
     if (!doc) return false;
     if (typeof doc.canDelete === "boolean") return doc.canDelete === true;
     const isOwner = myEmpId && String(doc.approvalAuthor) === String(myEmpId);
     return isOwner && doc.approvalStatus !== "APPROVED";
   }, [doc, myEmpId]);
+
+  // 🔒 UI 노출 조건: “매니저만 보이도록” 명시적으로 제한
+  const canDecideUI = isManager && canDecide;
+  const canDeleteUI = isManager && canDelete;
 
   // 승인/반려
   const decide = async (action, reason) => {
@@ -221,7 +239,7 @@ function ApprovalView() {
         {/* 상단 경고: 헤더 미전송 시 안내 */}
         {!myEmpId && (
           <div className="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
-            <div>로그인 사번을 찾지 못해 권한 버튼이 숨겨질 수 있습니다. (localStorage "me" 확인)</div>
+            <div>로그인 사번을 찾지 못해 권한 버튼이 숨겨질 수 있습니다. (useAuth / localStorage "me" 확인)</div>
           </div>
         )}
 
@@ -233,7 +251,9 @@ function ApprovalView() {
           <Link to={`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`} className="btn btn-primary">
             <i className="bi bi-pencil-square me-1" /> 수정
           </Link>
-          {canDelete && (
+
+          {/* 🔒 매니저이면서 삭제 권한 있을 때만 렌더 */}
+          {canDeleteUI && (
             <button
               type="button"
               className="btn btn-outline-danger"
@@ -273,8 +293,8 @@ function ApprovalView() {
 
         {!loading && !err && doc && (
           <>
-            {/* 승인/반려 패널 */}
-            {canDecide && (
+            {/* 🔒 매니저이면서 서버가 결재 가능하다고 내려준 경우에만 렌더 */}
+            {canDecideUI && (
               <div className="card shadow-sm mb-3">
                 <div className="card-body d-flex flex-wrap justify-content-end gap-2">
                   <button className="btn btn-success" disabled={deciding} onClick={() => decide("approve")}>
@@ -385,17 +405,13 @@ function ApprovalView() {
                           const isPending = String(l.approvalLineStatus).toUpperCase() === "PENDING" && !l.approvalLineDate;
                           return (
                             <tr key={l.approvalLineIdx}>
-                              {/* ✅ 결재자: 대기면 '-' , 완료면 사번만 표시 */}
+                              {/* 대기면 '-' , 완료면 사번만 표시 */}
                               <td className="text-center">
                                 {isPending
                                   ? "-"
                                   : (l.approvalId != null ? String(l.approvalId) : "-")}
                               </td>
-
-                              {/* 상태 */}
                               <td className="text-center"><span className={li.cls}>{li.label}</span></td>
-
-                              {/* 일시 */}
                               <td className="text-center">
                                 {l.approvalLineDate ? fmtDate(l.approvalLineDate) : "-"}
                               </td>
