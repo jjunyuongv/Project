@@ -3,6 +3,7 @@ import "./calendars.css";
 
 const DAY_START = 6;
 const HOUR_HEIGHT = 44;
+const EVENTS_URL = "/api/events"; // 백엔드 조회 엔드포인트
 
 // ===== utils =====
 function stripTime(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
@@ -13,9 +14,21 @@ function addDays(d, n){ const x=new Date(d); x.setDate(x.getDate()+n); return x;
 function betweenDate(a,b,c){ return a.getTime() <= c.getTime() && c.getTime() <= b.getTime(); }
 function fmtHM(min){ const h=Math.floor(min/60), m=min%60; return `${pad2(h)}:${pad2(m)}`; }
 
-// ===== API endpoint =====
-// 백엔드 컨트롤러: com.pj.springboot.calendar.controller.EventController (/api/events)
-const EVENTS_URL = "/api/events";
+// ===== 로그인 사번 가져오기(로컬/세션/전역 모두 시도) =====
+function getCurrentEmployeeId() {
+  try {
+    if (typeof window !== "undefined") {
+      if (window.__EMPLOYEE_ID__) return String(window.__EMPLOYEE_ID__);
+      const ls = window.localStorage?.getItem("employeeId");
+      if (ls) return ls;
+      const ss = window.sessionStorage?.getItem("employeeId");
+      if (ss) return ss;
+    }
+  } catch (e) {
+    void e; // ← 변수 사용 처리해서 ESLint 경고 제거
+  }
+  return null; // 없으면 서버에서 전체를 돌려줄 수 있음
+}
 
 // ===== calendar helpers =====
 function getWeekInfo(base){
@@ -61,10 +74,7 @@ function colorByType(t){ return ({flight:"#46C075",maintenance:"#FF9800",trainin
 function iconByType(t){ return ({flight:"✈️",maintenance:"🔧",training:"📚",vacation:"🏖️",shift:"📋"}[t]||"📅"); }
 
 // ====== 서버 EVENT → 프런트 타입 매핑 ======
-// backend category: 'ANNUAL'|'HALF'|'SICK'|'SHIFT'
 const toFrontendType = (category) => (category === "SHIFT" ? "shift" : "vacation");
-
-// ========== 컴포넌트 ==========
 
 export default function Calendars({ initialDate = new Date(), NavbarComponent, onAddSchedule }) {
   const [viewMode, setViewMode] = useState("month");
@@ -73,7 +83,7 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
     flight:true, maintenance:true, training:true, vacation:true, shift:true
   });
   const [data, setData] = useState(null);
-  const [stats] = useState(null);
+  const [stats] = useState(null);     // 통계 미사용: setter 제거
   const [loading, setLoading] = useState(false);
 
   // === fallback (빈 달력) ===
@@ -99,7 +109,6 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
   const dayData   = viewMode==="day"  ? (data?.hours ? data : dayFallback) : null;
 
   // ====== 서버에서 이벤트 가져오기 + 가공 ======
-  // 가시 범위 계산
   const { fetchStartISO, fetchEndISO } = useMemo(() => {
     if (viewMode === "month") {
       const grid = getCalendarDays(baseDate);
@@ -111,23 +120,32 @@ export default function Calendars({ initialDate = new Date(), NavbarComponent, o
       const { monday, sunday } = getWeekInfo(baseDate);
       return { fetchStartISO: toISODate(monday), fetchEndISO: toISODate(sunday) };
     }
-    // day
     return { fetchStartISO: toISODate(baseDate), fetchEndISO: toISODate(baseDate) };
   }, [viewMode, baseDate]);
 
-  // 주기적 새로고침(120초)
+  // 주기적 새로고침(120초) + 외부에서 강제 리프레시 이벤트 수신
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(()=>setTick(v=>v+1), 120000); return ()=>clearInterval(t); }, []);
+  useEffect(() => {
+    const h = () => setTick(v => v + 1);
+    window.addEventListener("calendar-refetch", h);
+    return () => window.removeEventListener("calendar-refetch", h);
+  }, []);
 
-  // fetch
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         setLoading(true);
-        const resp = await fetch(`${EVENTS_URL}?start=${fetchStartISO}&end=${fetchEndISO}`, { credentials: "include" });
+
+        // ✅ crewId(내 사번)까지 같이 보냄
+        const me = getCurrentEmployeeId();
+        const params = new URLSearchParams({ start: fetchStartISO, end: fetchEndISO });
+        if (me) params.set("crewId", me);
+
+        const resp = await fetch(`${EVENTS_URL}?${params.toString()}`, { credentials: "include" });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const list = await resp.json(); // [{eventId, crewEmployeeId, title, content, startDate, endDate, category}, ...]
+        const list = await resp.json(); // [{eventId, crewEmployeeId, title, content, startDate, endDate, category}...]
 
         if (cancelled) return;
 

@@ -225,10 +225,32 @@ public class ApprovalService {
 
     public String create(CreateApprovalReq req, int author) { return create(req, author, null); }
 
-    /* 수정 */
+    /* ==============================
+     * 수정 (오버로드 추가)
+     * ============================== */
+
+    // (기존) 단순 수정 메서드 — 기존 코드 유지
+    // ※ 다른 곳에서 이미 사용 중일 수 있으므로 삭제하지 않고 보존합니다.
     public void update(String docId, com.pj.springboot.approval.dto.UpdateApprovalReq req) {
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
+
+        if (req.getTitle() != null)   d.setApprovalTitle(req.getTitle().trim());
+        if (req.getContent() != null) d.setApprovalContent(req.getContent());
+        if (req.getCategory() != null) d.setApprovalCategory(req.getCategory());
+        docRepo.save(d);
+    }
+
+    // ★ 추가: 작성자 검증이 포함된 수정 메서드(오버로드)
+    // 컨트롤러의 update()는 이 메서드를 호출합니다.
+    public void update(String docId, int me, com.pj.springboot.approval.dto.UpdateApprovalReq req) { // ★ 추가
+        ApprovalDoc d = docRepo.findById(docId)
+                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
+
+        // 🔒 작성자만 수정 가능
+        if (d.getApprovalAuthor() == null || d.getApprovalAuthor() != me) {
+            throw new SecurityException("글쓴이가 아닙니다."); // ★ 추가
+        }
 
         if (req.getTitle() != null)   d.setApprovalTitle(req.getTitle().trim());
         if (req.getContent() != null) d.setApprovalContent(req.getContent());

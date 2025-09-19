@@ -1,6 +1,6 @@
 // src/pages/ApprovalList.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom"; // ★ 정리: useNavigate/useAuth 제거
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 
@@ -22,6 +22,8 @@ const fmtDate = (s) => {
 };
 
 function ApprovalList() {
+  // ★ 정리: 페이지 내부 로그인 오버레이/가드 제거 (전역 ProtectedRoute가 처리)
+
   const [sp, setSp] = useSearchParams();
   const SIZE = 10;
 

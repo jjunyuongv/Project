@@ -302,6 +302,7 @@ export default function ChatMain() {
 
   /* 메시지 */
   const [messages, setMessages] = useState([]);
+  // ★ 수정: 오타 제거 (불필요한 'the' 라인 삭제)
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const msgRef = useRef(null);
@@ -616,11 +617,8 @@ export default function ChatMain() {
       : activeRoom?.name || `그룹 ${activeRoomId}`
     : "방을 선택하세요";
 
-  /* ✅ 핵심: 로그인하지 않은 상태에서는 아무것도 렌더링하지 않음
-     (ProtectedRoute가 모달/리다이렉트를 처리하게 비워둠) */
-  if (!isLoggedIn || !user?.employeeId) {
-    return null;
-  }
+  // ★ 수정: 전역 ProtectedRoute가 모달/리다이렉트를 전담하므로
+  //   여기에서 비로그인 시 조기 return(null) 하던 코드를 제거했습니다.
 
   return (
     <div className="dm bg-light min-vh-100 d-flex flex-column">

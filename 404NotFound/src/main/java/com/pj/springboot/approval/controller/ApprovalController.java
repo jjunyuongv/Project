@@ -7,16 +7,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+// ★ 추가: 403/400 응답 처리를 위해 import
+import org.springframework.http.HttpStatus; // ★ 추가
+import org.springframework.http.ResponseEntity; // ★ 추가
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+// [reCAPTCHA] 헤더/쿼리 토큰도 허용할 수 있게 추가
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -76,10 +79,26 @@ public class ApprovalController {
         return ResponseEntity.ok(docId);
     }
 
-    // 수정
+    // =========================
+    // 수정 (작성자만 가능)
+    // =========================
+    // ★ 변경/보강 포인트:
+    // 1) X-Employee-Id 헤더를 받아 로그인 사용자의 사번을 확인합니다.
+    // 2) 서비스의 "작성자 검증이 포함된" 오버로드 메서드 update(docId, me, req)를 호출합니다.
+    // 3) 작성자 불일치 시 403(Forbidden), 기타 오류 시 400(Bad Request)로 응답합니다.
     @PutMapping("/{docId}")
-    public void update(@PathVariable String docId, @RequestBody UpdateApprovalReq req) {
-        service.update(docId, req);
+    public ResponseEntity<String> update(@PathVariable String docId,
+                                         @RequestBody UpdateApprovalReq req,
+                                         @RequestHeader("X-Employee-Id") String eid) { // ★ 추가
+        int me = Integer.parseInt(eid); // ★ 추가: 로그인 사용자(사번)
+        try {
+            service.update(docId, me, req); // ★ 추가: 작성자 검증 포함 오버로드 호출
+            return ResponseEntity.ok("수정 완료");
+        } catch (SecurityException se) { // ★ 추가: 작성자 아님
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("글쓴이가 아닙니다.");
+        } catch (IllegalArgumentException iae) { // 문서 없음 등
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(iae.getMessage());
+        }
     }
 
     // 승인

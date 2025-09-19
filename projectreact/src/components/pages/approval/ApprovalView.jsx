@@ -158,6 +158,12 @@ function ApprovalView() {
   const canDecideUI = isManager && canDecide;
   const canDeleteUI = isManager && canDelete;
 
+  // 🔒 작성자 여부 (수정 버튼 클릭 시 검사에 사용)
+  const isOwner = useMemo(() => {
+    if (!doc || !myEmpId) return false;
+    return String(doc.approvalAuthor) === String(myEmpId);
+  }, [doc, myEmpId]);
+
   // 승인/반려
   const decide = async (action, reason) => {
     if (!docId) return;
@@ -216,6 +222,17 @@ function ApprovalView() {
     }
   };
 
+  // ✅ 수정 버튼 클릭 시: 작성자만 이동, 아니면 경고
+  const handleEditClick = (e) => {
+    e.preventDefault();
+    if (!docId) return;
+    if (!isOwner) {
+      alert("글쓴이가 아닙니다.");
+      return;
+    }
+    navigate(`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`);
+  };
+
   const styles = {
     pre: { whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 180 },
     hero: { height: 300, backgroundImage: "url('/Generated.png')", backgroundSize: "cover", backgroundPosition: "center", position: "relative" },
@@ -236,7 +253,6 @@ function ApprovalView() {
       </header>
 
       <main className="container-xxl py-4 flex-grow-1">
-        {/* 상단 경고: 헤더 미전송 시 안내 */}
         {!myEmpId && (
           <div className="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
             <div>로그인 사번을 찾지 못해 권한 버튼이 숨겨질 수 있습니다. (useAuth / localStorage "me" 확인)</div>
@@ -248,9 +264,11 @@ function ApprovalView() {
           <Link to={`/ApprovalList${loc.search || ""}`} className="btn btn-light border shadow-sm">
             <i className="bi bi-list me-1" /> 목록
           </Link>
-          <Link to={`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`} className="btn btn-primary">
+
+          {/* 🔒 버튼은 항상 보이되, 클릭 시 작성자 검사 */}
+          <button type="button" className="btn btn-primary" onClick={handleEditClick}>
             <i className="bi bi-pencil-square me-1" /> 수정
-          </Link>
+          </button>
 
           {/* 🔒 매니저이면서 삭제 권한 있을 때만 렌더 */}
           {canDeleteUI && (
@@ -376,7 +394,7 @@ function ApprovalView() {
             {/* 내용 */}
             <div className="card shadow-sm mb-3">
               <div className="card-header bg-white"><strong>내용</strong></div>
-              <div className="card-body"><div style={styles.pre}>{doc.approvalContent || "-"}</div></div>
+              <div className="card-body"><div style={{ whiteSpace:"pre-wrap", wordBreak:"break-word", minHeight:180 }}>{doc.approvalContent || "-"}</div></div>
             </div>
 
             {/* 결재 이력 */}
@@ -405,11 +423,8 @@ function ApprovalView() {
                           const isPending = String(l.approvalLineStatus).toUpperCase() === "PENDING" && !l.approvalLineDate;
                           return (
                             <tr key={l.approvalLineIdx}>
-                              {/* 대기면 '-' , 완료면 사번만 표시 */}
                               <td className="text-center">
-                                {isPending
-                                  ? "-"
-                                  : (l.approvalId != null ? String(l.approvalId) : "-")}
+                                {isPending ? "-" : (l.approvalId != null ? String(l.approvalId) : "-")}
                               </td>
                               <td className="text-center"><span className={li.cls}>{li.label}</span></td>
                               <td className="text-center">

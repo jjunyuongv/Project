@@ -295,3 +295,4 @@ VALUES
   ('APP-20250917-0301', @approver_ground,3, 'APPROVED', '2025-09-17 12:30:00');
 select * from employees;
 select * from approval_doc;
+select * from `EVENT`;

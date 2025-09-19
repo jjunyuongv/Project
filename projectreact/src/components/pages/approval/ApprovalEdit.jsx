@@ -22,7 +22,7 @@ function ApprovalEdit() {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
 
-  // 라우트 파라미터(:docId) 우선, 없으면 쿼리스트링(docId|no) 사용
+  // :docId 우선, 없으면 ?docId | ?no
   const params = useParams();
   const [searchParams] = useSearchParams();
   const docId =
@@ -31,7 +31,7 @@ function ApprovalEdit() {
     searchParams.get("no") ||
     "";
 
-  // 로그인 사번 자동 주입(수정 불가)
+  // 로그인 사번 표시(수정 불가)
   const [employeeId, setEmployeeId] = useState("");
   useEffect(() => {
     if (isLoggedIn && user?.employeeId) setEmployeeId(String(user.employeeId));
@@ -42,14 +42,21 @@ function ApprovalEdit() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
+  // 쓰기 화면과 동일한 상태 구조로 확장
   const [form, setForm] = useState({
     title: "",
     type: "휴가/근무 변경", // UI 표시용
     content: "",
-    files: [], // 미리보기만, 전송 X
+    files: [], // 미리보기 전용
+    // TIMEOFF
+    timeoffType: "ANNUAL",
+    timeoffStart: "",
+    timeoffEnd: "",
+    timeoffReason: "",
   });
 
   const category = useMemo(() => TYPE_MAP[form.type] || "ETC", [form.type]);
+  const isTimeoff = category === "TIMEOFF";
 
   const styles = {
     hero: {
@@ -100,11 +107,25 @@ function ApprovalEdit() {
         }
         const data = await res.json();
 
+        // 카테고리 → UI 라벨
+        const uiType = TYPE_MAP_REV[data.approvalCategory] || "기타";
+
+        // TIMEOFF 데이터 방어적으로 파싱 (timeoff 객체 또는 낱개 필드 모두 지원)
+        const to = data.timeoff || {};
+        const timeoffType  = to.timeoffType || to.type || data.timeoffType || "ANNUAL";
+        const timeoffStart = to.start || data.timeoffStart || "";
+        const timeoffEnd   = to.end || data.timeoffEnd || "";
+        const timeoffReason= to.reason || data.timeoffReason || "";
+
         setForm({
           title: data.approvalTitle ?? "",
-          type: TYPE_MAP_REV[data.approvalCategory] || "기타",
+          type: uiType,
           content: data.approvalContent ?? "",
           files: [],
+          timeoffType,
+          timeoffStart,
+          timeoffEnd,
+          timeoffReason,
         });
       } catch (e) {
         if (e.name !== "AbortError") setErr(e.message || String(e));
@@ -119,10 +140,14 @@ function ApprovalEdit() {
     if (!form.title.trim()) return "제목을 입력하세요.";
     if (!form.content.trim()) return "내용을 입력하세요.";
     if (!docId) return "문서 ID가 없습니다.";
+    if (isTimeoff) {
+      if (!form.timeoffStart || !form.timeoffEnd) return "휴가 시작/종료일을 입력하세요.";
+      if (form.timeoffEnd < form.timeoffStart) return "휴가 종료일이 시작일보다 빠를 수 없습니다.";
+    }
     return null;
   };
 
-  // PUT 우선 → 405면 PATCH로 재시도
+  // PUT 우선 → 405면 PATCH 재시도
   const updateDoc = async (payload, headers) => {
     let res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
       method: "PUT",
@@ -142,15 +167,20 @@ function ApprovalEdit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
-    if (v) {
-      setErr(v);
-      return;
-    }
+    if (v) { setErr(v); return; }
 
     const payload = {
       title: form.title.trim(),
       content: form.content,
-      category, // TIMEOFF/SHIFT/ETC
+      category, // TIMEOFF/ETC
+      timeoff: isTimeoff
+        ? {
+            timeoffType: form.timeoffType,
+            start: form.timeoffStart,
+            end: form.timeoffEnd,
+            reason: form.timeoffReason || "",
+          }
+        : null,
     };
 
     try {
@@ -189,11 +219,7 @@ function ApprovalEdit() {
       </header>
 
       <main className="container-xxl py-4 flex-grow-1">
-        {err && (
-          <div className="alert alert-danger" role="alert">
-            {err}
-          </div>
-        )}
+        {err && <div className="alert alert-danger" role="alert">{err}</div>}
 
         {loading ? (
           <div className="card shadow-sm mb-3">
@@ -275,6 +301,37 @@ function ApprovalEdit() {
                 </div>
               </div>
             </div>
+
+            {/* TIMEOFF 상세 (쓰기 화면과 동일) */}
+            {isTimeoff && (
+              <div className="card shadow-sm mb-3">
+                <div className="card-header bg-white"><strong>휴가 / 근무 변경 상세</strong></div>
+                <div className="card-body">
+                  <div className="row g-3">
+                    <div className="col-md-3">
+                      <label className="form-label">유형</label>
+                      <select className="form-select" name="timeoffType" value={form.timeoffType} onChange={handleChange}>
+                        <option value="ANNUAL">연차</option>
+                        <option value="HALF">반차</option>
+                        <option value="SICK">병가</option>
+                      </select>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">시작일</label>
+                      <input type="date" className="form-control" name="timeoffStart" value={form.timeoffStart} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">종료일</label>
+                      <input type="date" className="form-control" name="timeoffEnd" value={form.timeoffEnd} onChange={handleChange} />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">사유</label>
+                      <textarea className="form-control" name="timeoffReason" rows={3} value={form.timeoffReason} onChange={handleChange} placeholder="사유를 입력하세요" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="d-flex gap-2 justify-content-end">
               <Link
