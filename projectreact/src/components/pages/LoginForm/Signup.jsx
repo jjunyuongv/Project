@@ -5,6 +5,8 @@ import axios from "axios";
 import { useAuth } from './AuthContext';
 import './signup.css';
 import './modal.css';
+// [reCAPTCHA] 추가 import
+import ReCAPTCHA from "react-google-recaptcha";
 
 function Signup() {
     const { isLoggedIn } = useAuth();
@@ -36,6 +38,9 @@ function Signup() {
     const [isEmailSent, setIsEmailSent] = useState(false);
     const [isEmailVerified, setIsEmailVerified] = useState(false);
     const [authTimer, setAuthTimer] = useState(0);
+
+    // [reCAPTCHA] 토큰 상태
+    const [captchaToken, setCaptchaToken] = useState(null);
 
     useEffect(() => {
         if (isLoggedIn) {
@@ -159,18 +164,37 @@ function Signup() {
             return;
         }
 
+        // [reCAPTCHA] 토큰 체크: v2 토큰은 1회성/짧은 유효시간 → 없거나 만료되면 가입 막기
+        if (!captchaToken) {
+            setMessage("로봇이 아님을 확인해 주세요.");
+            setShowModal(true);
+            return;
+        }
+
         try {
+            // [reCAPTCHA] 중요!
+            // DTO를 건드리지 않기 위해, 토큰은 바디가 아니라 "헤더"로 전송한다.
+            // 백엔드 EmployeeController는 X-Recaptcha-Token 헤더 또는 recaptchaToken 쿼리/바디를 모두 지원.
             await axios.post(
                 "http://localhost:8081/api/employees/signup",
-                formData,
-                { withCredentials: true }
+                formData, // ← 기존 form 데이터만 전송 (DTO에 없는 필드는 넣지 않음)
+                {
+                    withCredentials: true,
+                    headers: {
+                        // [reCAPTCHA] 서버 검증용 토큰 헤더
+                        "X-Recaptcha-Token": captchaToken
+                    }
+                }
             );
+
             setMessage("회원가입이 완료되었습니다!");
             setShowModal(true);
         } catch (error) {
             console.error(error);
             setMessage(error.response?.data || "회원가입에 실패했습니다.");
             setShowModal(true);
+            // [reCAPTCHA] 실패 시 만료/초기화 대응(필요 시 다시 체크하도록)
+            setCaptchaToken(null);
         }
     };
 
@@ -327,6 +351,17 @@ function Signup() {
                             <label className="form-label">휴대폰번호</label>
                             <input type="text" className="form-control" name="phone" value={formData.phone} onChange={handleChange} />
                             {errors.phone && <div className="text-danger">{errors.phone}</div>}
+                        </div>
+
+                        {/* [reCAPTCHA] 체크박스: v2 'I'm not a robot' 위젯 */}
+                        <div style={{ margin: "12px 0" }}>
+                          <ReCAPTCHA
+                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                            onChange={setCaptchaToken}          // 토큰 발생 시 저장
+                            onExpired={() => setCaptchaToken(null)} // 만료되면 토큰 비움
+                            // size="compact"  // 공간 좁으면 사용
+                            // theme="dark"    // 다크 UI면 사용
+                          />
                         </div>
 
                         <button type="submit" className="btn-primary-KHS">가입하기</button>
