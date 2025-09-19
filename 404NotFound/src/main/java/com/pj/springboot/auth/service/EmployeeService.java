@@ -86,6 +86,7 @@ public class EmployeeService {
                 .gender(employee.getGender())
                 .department(employee.getDepartment())
                 .job(employee.getJob())
+                .role(employee.getRole())
                 .build();
     }
 

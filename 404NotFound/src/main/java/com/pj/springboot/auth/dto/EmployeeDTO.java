@@ -19,4 +19,5 @@ public class EmployeeDTO {
     private String department; // 부서
     private String job;      // 직무
     private String gender;
+    private String role;
 }

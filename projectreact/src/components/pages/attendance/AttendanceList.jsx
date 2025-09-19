@@ -101,6 +101,7 @@ function AttendanceList(props) {
       } else {
         alert("금일 근태 정보가 등록되지 않았습니다.");
         insertToday();
+        getData();
       }
     }
     setCount(countResp.data);

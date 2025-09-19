@@ -123,7 +123,7 @@ function MyFacilityReservationList(props) {
     if (trData.length === 0) {
       trData.push(
         <tr key={"noData"}>
-          <td colSpan={7}>결과가 없습니다.</td>
+          <td colSpan={8}>결과가 없습니다.</td>
         </tr>);
     }
   };

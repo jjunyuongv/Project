@@ -21,7 +21,7 @@ function normalizeMe(rawInput) {
   const raw = rawInput.user ?? rawInput;
 
   const candidates = [
-    raw.employeeId, raw.employee_id, raw.empId, raw.emp_id,
+    raw.employeeId, raw.employee_id, raw.empId, raw.emp_id, 
     raw.userId, raw.user_id, raw.id,
     raw.username, raw.loginId, raw.login_id,
     raw?.employee?.employeeId, raw?.member?.employeeId, raw?.profile?.employeeId,
@@ -37,14 +37,14 @@ function normalizeMe(rawInput) {
     throw new Error('employeeId 추출 실패');
   }
 
-  let roles = [];
-  if (Array.isArray(raw.roles)) roles = raw.roles;
-  else if (typeof raw.role === 'string') roles = [raw.role];
-  else if (Array.isArray(raw.authorities)) roles = raw.authorities.map(a => String(a));
+  let role = raw.role;
+  // if (Array.isArray(raw.roles)) roles = raw.roles;
+  // else if (typeof raw.role === 'string') roles = [raw.role];
+  // else if (Array.isArray(raw.authorities)) roles = raw.authorities.map(a => String(a));
 
   const name = raw.name || raw.displayName || raw.username || raw.loginId || String(employeeId);
 
-  return { employeeId, name, loginId: raw.loginId || raw.username || '', roles };
+  return { employeeId, name, loginId: raw.loginId || raw.username || '', role };
 }
 
 function readMe() {
