@@ -27,8 +27,9 @@ function FacilitiesList(props) {
     facilityName: ""
   });
 
-  // 로그인 정보
+  // 로그인 관련
   const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
 
   function goWrite(e) {
     e.preventDefault();
@@ -87,7 +88,9 @@ function FacilitiesList(props) {
   }
 
   useEffect(function () {
-    getData();
+    if (isLoggedIn) {
+      getData();
+    }
   }, []);
 
   useEffect(function () {
@@ -144,11 +147,11 @@ function FacilitiesList(props) {
               보기
             </Button>
           </td>
-          <td>
+          <td hidden={!isManager}>
             <Button className="basic-button" size="sm" onClick={() => { navigate("/FacilitiesEdit/" + element.facilityId); }}>
               수정
             </Button>
-            <Button className="cancel-button m-1" size="sm" onClick={() => { confirmDelete(element.facilityId); }}>
+            <Button className="cancel-button mx-1" size="sm" onClick={() => { confirmDelete(element.facilityId); }}>
               삭제
             </Button>
           </td>
@@ -165,7 +168,13 @@ function FacilitiesList(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">시설물</h1>
+      </div>
+      <div className="d-flex justify-content-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>
@@ -178,14 +187,14 @@ function FacilitiesList(props) {
       <div>
         <div className="table-wrap rounded mt-3">
           {/* 유저 */}
-          <Button className="text-left basic-button mb-3 mx-1" onClick={(e) => { goWrite(e); }}>
+          <Button className="text-left basic-button mb-3 mx-1" hidden={!isManager} onClick={(e) => { goWrite(e); }}>
             시설 등록
           </Button>
           <Button className="text-left basic-button mb-3 mx-1" onClick={(e) => { goMyReservation(e); }}>
             내 예약
           </Button>
           {/* 매니저 */}
-          <Button className="text-left basic-button mb-3 mx-1" onClick={(e) => { goFacilityReservationApproval(e); }}>
+          <Button className="text-left basic-button mb-3 mx-1" hidden={!isManager} onClick={(e) => { goFacilityReservationApproval(e); }}>
             시설물 예약대기
           </Button>
           {/* 검색하기 */}
@@ -215,13 +224,13 @@ function FacilitiesList(props) {
           <thead>
             <tr>
               <th style={{ width: 90 }}>종류</th>
-              <th>시설명</th>
+              <th className="w-15">시설명</th>
               <th className="w-25">위치</th>
-              <th style={{ width: 120 }}>사용여부</th>
+              <th style={{ width: 90 }}>사용여부</th>
               <th style={{ width: 120 }}>관리자명</th>
               <th className="w-10">예약</th>
               <th className="w-10">예약상황</th>
-              <th className="w-10">관리</th>
+              <th className="w-15" hidden={!isManager}>관리</th>
             </tr>
           </thead>
           <tbody>

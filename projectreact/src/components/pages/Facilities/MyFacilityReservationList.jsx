@@ -59,11 +59,6 @@ function MyFacilityReservationList(props) {
     setIsEndLoading(true);
   }
 
-  useEffect(function () {
-    if (!isEndLoading)
-      return;
-    getData();
-  }, [page]);
 
   function goList(e) {
     e.preventDefault();
@@ -76,12 +71,15 @@ function MyFacilityReservationList(props) {
   }
 
   useEffect(function () {
+    if (!isEndLoading)
+      return;
     getData();
-  }, []);
+  }, [page]);
 
   useEffect(function () {
     getData();
-  }, [page]);
+  }, []);
+
 
   function getBadge(status) {
     switch (status) {
@@ -130,7 +128,13 @@ function MyFacilityReservationList(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">시설물</h1>
+      </div>
+      <div className="d-flex justify-content-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>

@@ -4,6 +4,7 @@ import { Badge, Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "./template/NavigatePage";
 import ModalController from "../modal/ModalController";
+import { useAuth } from "../LoginForm/AuthContext";
 
 
 function FacilityReservationApproval(props) {
@@ -18,6 +19,10 @@ function FacilityReservationApproval(props) {
     searchField: "reservationEmployeeName",
     searchWord: ""
   });
+
+  // 로그인 관련
+  const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
 
   // modal창에게 주고싶은 데이터
   const [parentData, setParentData] = useState({
@@ -106,7 +111,13 @@ function FacilityReservationApproval(props) {
   }
 
   useEffect(function () {
-    getData();
+    if (isLoggedIn) {
+      if (!isManager) {
+        alert("권한이 없습니다.");
+        history.back();
+      }
+      getData();
+    }
   }, []);
 
   useEffect(function () {
@@ -167,7 +178,13 @@ function FacilityReservationApproval(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">시설물</h1>
+      </div>
+      <div className="d-flex justify-content-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>

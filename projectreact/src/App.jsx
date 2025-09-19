@@ -1,36 +1,34 @@
 // @ts-nocheck
-import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
-import ProtectedRoute from './components/pages/LoginForm/ProtectedRoute';
 import { AuthProvider, useAuth } from './components/pages/LoginForm/AuthContext'; // useAuth 추가
+import ProtectedRoute from './components/pages/LoginForm/ProtectedRoute';
 
 import Navbar from './components/Navbar';
-import HomePage from './components/pages/HomePage';
+import ApprovalEdit from './components/pages/approval/ApprovalEdit';
+import ApprovalList from './components/pages/approval/ApprovalList';
+import ApprovalView from './components/pages/approval/ApprovalView';
+import ApprovalWrite from './components/pages/Approval/ApprovalWrite';
 import BoardPage from './components/pages/boardForm/BoardPage';
 import ViewPage from './components/pages/boardForm/ViewPage';
 import WritePage from './components/pages/boardForm/WritePage';
 import Calendars from './components/pages/calendars/calendars';
 import ChatMain from './components/pages/chatfrom/chatmain';
-import Login from './components/pages/LoginForm/Login';
-import Signup from './components/pages/LoginForm/Signup';
-import ApprovalList from './components/pages/approval/ApprovalList';
-import ApprovalView from './components/pages/approval/ApprovalView';
-import ApprovalEdit from './components/pages/approval/ApprovalEdit';
-import ApprovalWrite from './components/pages/Approval/ApprovalWrite';
+import HomePage from './components/pages/HomePage';
 import FindId from './components/pages/LoginForm/FindId';
 import FindPassword from './components/pages/LoginForm/FindPassword';
+import Login from './components/pages/LoginForm/Login';
 import MyPage from './components/pages/LoginForm/MyPage';
+import Signup from './components/pages/LoginForm/Signup';
 
 import './App.css';
-import FacilitiesList from './components/pages/Facilities/FacilitiesList';
-import FacilityReservationApproval from './components/pages/Facilities/FacilityReservationApproval';
-import MyFacilityReservationList from './components/pages/Facilities/MyFacilityReservationList';
-import FacilitiesWrite from './components/pages/Facilities/FacilitiesWrite';
-import FacilitiesEdit from './components/pages/Facilities/FacilitiesEdit';
-import FacilitiesManage from './components/pages/Facilities/FacilitiesManage';
 import AttendanceList from './components/pages/attendance/AttendanceList';
 import AttendanceStats from './components/pages/attendance/AttendanceStats';
+import FacilitiesEdit from './components/pages/Facilities/FacilitiesEdit';
+import FacilitiesList from './components/pages/Facilities/FacilitiesList';
+import FacilitiesWrite from './components/pages/Facilities/FacilitiesWrite';
+import FacilityReservationApproval from './components/pages/Facilities/FacilityReservationApproval';
+import MyFacilityReservationList from './components/pages/Facilities/MyFacilityReservationList';
 import LocationMain from './components/pages/Location/LocationMain';
 
 // 새로운 라우터 컴포넌트
@@ -79,9 +77,6 @@ const AppRoutes = () => {
         {/* 현준 */}
         <Route path="/FacilitiesList" >
           <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilitiesList baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
-        </Route>
-        <Route path="/FacilitiesManage" >
-          <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilitiesManage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
         </Route>
         <Route path="/FacilityReservationApproval" >
           <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilityReservationApproval baseUrl={url.jsp} /></ProtectedRoute>} ></Route>

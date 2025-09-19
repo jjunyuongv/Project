@@ -1,8 +1,9 @@
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import ModalController from "../modal/ModalController";
+import { useAuth } from "../LoginForm/AuthContext";
 
 
 function FacilitiesWrite(props) {
@@ -21,12 +22,25 @@ function FacilitiesWrite(props) {
   const [address, setAddress] = useState("");
   const facilityType = ["회의실", "주차장", "식당", "교육실", "사무실"];
 
+  // 로그인 관련
+  const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
+
   const formDataHandler = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   }
+
+  useEffect(function () {
+    if (isLoggedIn) {
+      if (!isManager) {
+        alert("권한이 없습니다.");
+        history.back();
+      }
+    }
+  }, []);
 
   const submitData = async (e) => {
     e.preventDefault();
@@ -84,7 +98,7 @@ function FacilitiesWrite(props) {
     <div className="boardpage">
       <div className="hero">
         <div className="hero__overlay" />
-        <h1 className="hero__title">시설물 등록</h1>
+        <h1 className="hero__title">시설물</h1>
       </div>
       <div className="table-wrap rounded mt-5">
         <form onSubmit={submitData} method="post">

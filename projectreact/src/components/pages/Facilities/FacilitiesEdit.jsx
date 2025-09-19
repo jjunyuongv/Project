@@ -3,6 +3,7 @@ import { Button, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import ModalController from "../modal/ModalController";
 import axios from "axios";
+import { useAuth } from "../LoginForm/AuthContext";
 
 
 function FacilitiesEdit(props) {
@@ -22,6 +23,10 @@ function FacilitiesEdit(props) {
     employeeName: ""
   });
   const facilityType = ["회의실", "주차장", "식당", "교육실", "사무실"];
+  // 로그인 관련
+  const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
+  // let isManager = false;
 
   const formDataHandler = (e) => {
     setFormData({
@@ -46,7 +51,13 @@ function FacilitiesEdit(props) {
   }
 
   useEffect(function () {
-    getData();
+    if (isLoggedIn) {
+      if (!isManager) {
+        alert("권한이 없습니다.");
+        history.back();
+      }
+      getData();
+    }
   }, []);
 
   const submitData = async (e) => {
@@ -94,7 +105,13 @@ function FacilitiesEdit(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">시설물</h1>
+      </div>
+      <div className="d-flex justify-content-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>

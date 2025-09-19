@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
+import { useAuth } from "../LoginForm/AuthContext";
 
 
 function AttendanceStats(props) {
@@ -17,6 +18,10 @@ function AttendanceStats(props) {
     searchField: "employeeName",
     searchWord: ""
   });
+
+  // 로그인 관련
+  const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
 
   const formDataHandler = (e) => {
     setFormData({
@@ -39,13 +44,17 @@ function AttendanceStats(props) {
       response = await axios.get(dataUrl + "/month/" + month + "/page/" + page + "/" + pageSize);
     }
 
-    console.log(countResp.data);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
   }
 
   useEffect(function () {
+    if (isLoggedIn)
+      if (!isManager) {
+        alert("권한이 없습니다.");
+        history.back();
+      }
     getData();
   }, []);
 
@@ -120,14 +129,20 @@ function AttendanceStats(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">근태 통계</h1>
+      </div>
+      <div className="d-flex justify-content-center align-items-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>
     <div className="boardpage">
       <div className="hero">
         <div className="hero__overlay" />
-        <h1 className="hero__title">사원별 근태 통계</h1>
+        <h1 className="hero__title">근태 통계</h1>
       </div>
 
       <div>

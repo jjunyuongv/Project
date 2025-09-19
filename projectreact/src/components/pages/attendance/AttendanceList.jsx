@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
+import { Badge, Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
 import ModalController from "../modal/ModalController";
@@ -25,6 +25,7 @@ function AttendanceList(props) {
 
   // 로그인 관련
   const { isLoggedIn, user } = useAuth();
+  let isManager = user.role === "MANAGER" ? true : false;
 
   // modal창에게 주고싶은 데이터
   const [parentData, setParentData] = useState({
@@ -153,7 +154,10 @@ function AttendanceList(props) {
   }
 
   useEffect(function () {
-    getData();
+    // 로그인 안되어있을 때는 데이터를 불러오지 않음
+    if (isLoggedIn) {
+      getData();
+    }
   }, []);
 
   useEffect(function () {
@@ -192,10 +196,6 @@ function AttendanceList(props) {
     navigate("/AttendanceStats/1/month/" + now.getFullYear() + "-" + String((now.getMonth() + 1)).padStart(2, "0"));
   }
 
-  function goHome() {
-    navigate("/");
-  }
-
   const searchData = async (e) => {
     e.preventDefault();
     if (isNaN(formData.searchWord) && formData.searchField == "employeeId") {
@@ -203,6 +203,27 @@ function AttendanceList(props) {
       return;
     }
     movePage(e, 1, true);
+  }
+
+  function getBadge(status) {
+    switch (status) {
+      case "결근":
+        return <h5><Badge pill bg="danger">결근</Badge></h5>;
+      case "휴가":
+        return <h5><Badge pill bg="primary">휴가</Badge></h5>;
+      case "병가":
+        return <h5><Badge pill bg="info">병가</Badge></h5>;
+      case "지각":
+        return <h5><Badge pill bg="warning">지각</Badge></h5>;
+      case "조퇴":
+        return <h5><Badge pill bg="secondary">조퇴</Badge></h5>;
+      case "출근":
+        return <h5><Badge pill bg="success">출근</Badge></h5>;
+      case "퇴근":
+        return <h5><Badge pill bg="dark">퇴근</Badge></h5>;
+      default:
+        return <h5><Badge pill bg="secondary">Error</Badge></h5>;
+    }
   }
 
   let trData = [];
@@ -215,10 +236,8 @@ function AttendanceList(props) {
           <td>{element.attendanceEmployeeName}</td>
           <td>{element.attendanceStart}</td>
           <td>{element.attendanceEnd}</td>
-          <td>{element.attendanceStatus}</td>
-          {/* <td>{element.attendanceReason}</td>
-          <td>{element.attendanceEditEmployeeName}</td> */}
-          <td>
+          <td>{getBadge(element.attendanceStatus)}</td>
+          <td hidden={!isManager}>
             <Button className="basic-button" size="sm" onClick={(e) => {
               e.preventDefault();
               setParentData({
@@ -248,7 +267,13 @@ function AttendanceList(props) {
 
   // 백엔드에서 데이터 가져오기 전 로딩중인걸 표시
   if (!isEndLoading) {
-    return <div className="d-flex justify-content-center align-items-center min-vh-100"><Spinner animation="border" role="status" /></div>
+    return <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">근태</h1>
+      </div>
+      <div className="d-flex justify-content-center align-items-center"><Spinner animation="border" role="status" /></div>
+    </div>
   }
 
   return (<>
@@ -266,7 +291,7 @@ function AttendanceList(props) {
           <Button className="basic-button m-1" disabled={empState === 1 ? false : true} onClick={() => { checkOut(); }}>
             퇴근
           </Button>
-          <Button className="basic-button m-1" onClick={(e) => { goAttendanceStatsPage(e); }}>
+          <Button className="basic-button m-1" hidden={!isManager} onClick={(e) => { goAttendanceStatsPage(e); }}>
             월별 직원 통계
           </Button>
           <br />
@@ -305,7 +330,7 @@ function AttendanceList(props) {
               <th style={{ width: 90 }}>출근시각</th>
               <th style={{ width: 90 }}>퇴근시각</th>
               <th className="w-10">상태</th>
-              <th className="w-10">관리</th>
+              <th className="w-10" hidden={!isManager}>관리</th>
             </tr>
           </thead>
           <tbody>
