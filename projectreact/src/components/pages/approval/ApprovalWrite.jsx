@@ -13,6 +13,41 @@ const TYPE_MAP = {
   "기타": "ETC",
 };
 
+/* === 공통 fetch 유틸(과한 예외/중복 축소) === */
+class HttpError extends Error {
+  constructor(status, statusText) {
+    super(`${status} ${statusText}`.trim());
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+async function fetchOk(url, init) {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new HttpError(res.status, res.statusText);
+  return res;
+}
+async function extractDocIdFromResponse(res) {
+  // 본문(JSON 또는 텍스트) & Location 헤더 기반 추출
+  let docId = null, data = null;
+  try {
+    const cloned = res.clone();
+    try {
+      data = await res.json();
+      docId = data?.approvalDocId ?? data?.docId ?? data?.id ?? null;
+    } catch {
+      const txt = (await cloned.text())?.trim();
+      if (txt) docId = txt;
+    }
+  } catch {
+    /* noop */
+  }
+  if (!docId) {
+    const loc = res.headers.get("Location");
+    if (loc) docId = decodeURIComponent(loc.split("/").pop());
+  }
+  return { docId, data };
+}
+
 function ApprovalWrite() {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
@@ -20,11 +55,8 @@ function ApprovalWrite() {
   // 사번: 로그인 정보로 자동 세팅(+수정 불가)
   const [employeeId, setEmployeeId] = useState("");
   useEffect(() => {
-    if (isLoggedIn && user?.employeeId) {
-      setEmployeeId(String(user.employeeId));
-    } else {
-      setEmployeeId("");
-    }
+    if (isLoggedIn && user?.employeeId) setEmployeeId(String(user.employeeId));
+    else setEmployeeId("");
   }, [isLoggedIn, user]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -45,26 +77,12 @@ function ApprovalWrite() {
   const category = useMemo(() => TYPE_MAP[form.type] || "ETC", [form.type]);
   const isTimeoff = category === "TIMEOFF";
 
-  const styles = {
-    hero: {
-      height: 300,
-      backgroundImage: "url('/Generated.png')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      position: "relative",
-    },
-    heroMask: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 0 },
-    heroContent: { position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", height: "100%" },
-    heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
   };
-  const handleFiles = (e) => {
+  const handleFiles = (e) =>
     setForm((p) => ({ ...p, files: Array.from(e.target.files || []) }));
-  };
 
   const validate = () => {
     if (!form.title.trim()) return "제목을 입력하세요.";
@@ -81,27 +99,6 @@ function ApprovalWrite() {
     }
     return null;
   };
-
-  // 서버 응답이 텍스트/JSON 모두 가능한 상황 처리
-  async function parseCreateResponse(res) {
-    const txt = (await res.text())?.trim();
-    let data = null;
-    let docId = null;
-    if (txt) {
-      try {
-        const maybe = JSON.parse(txt);
-        data = maybe;
-        docId = maybe?.approvalDocId ?? maybe?.docId ?? maybe?.id ?? null;
-      } catch {
-        docId = txt;
-      }
-    }
-    if (!docId) {
-      const loc = res.headers.get("Location");
-      if (loc) docId = decodeURIComponent(loc.split("/").pop());
-    }
-    return { data, docId, raw: txt };
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -138,25 +135,20 @@ function ApprovalWrite() {
         const fd = new FormData();
         fd.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
         fd.append("file", form.files[0]);
-        res = await fetch(`${API_BASE}/api/approvals`, {
+        res = await fetchOk(`${API_BASE}/api/approvals`, {
           method: "POST",
           headers: baseHeaders, // FormData는 Content-Type 자동
           body: fd,
         });
       } else {
-        res = await fetch(`${API_BASE}/api/approvals`, {
+        res = await fetchOk(`${API_BASE}/api/approvals`, {
           method: "POST",
           headers: { ...baseHeaders, "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       }
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`제출 실패 (${res.status}) ${txt}`);
-      }
-
-      const { docId } = await parseCreateResponse(res);
+      const { docId } = await extractDocIdFromResponse(res);
       if (docId) {
         alert("제출되었습니다.");
         navigate(`/ApprovalView/${encodeURIComponent(docId)}`);
@@ -165,22 +157,18 @@ function ApprovalWrite() {
         navigate("/ApprovalList");
       }
     } catch (e2) {
-      setErr(e2.message || String(e2));
+      setErr(e2?.message || String(e2));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-light min-vh-100 d-flex flex-column">
-      <header>
-        <section style={styles.hero}>
-          <div style={styles.heroMask} />
-          <div style={styles.heroContent}>
-            <h1 style={styles.heroTitle}>문서 작성</h1>
-          </div>
-        </section>
-      </header>
+    <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">문서 작성</h1>
+      </div>
 
       <main className="container-xxl py-4 flex-grow-1">
         <form onSubmit={handleSubmit}>

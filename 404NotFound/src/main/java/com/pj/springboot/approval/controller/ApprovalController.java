@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestPart; // ★ NEW (멀티파트 파트 바인딩)
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile;     // ★ NEW
 
 import com.pj.springboot.approval.dto.ApprovalDetailDto;
 import com.pj.springboot.approval.dto.ApprovalDto;
@@ -82,10 +82,6 @@ public class ApprovalController {
     // =========================
     // 수정 (작성자만 가능)
     // =========================
-    // ★ 변경/보강 포인트:
-    // 1) X-Employee-Id 헤더를 받아 로그인 사용자의 사번을 확인합니다.
-    // 2) 서비스의 "작성자 검증이 포함된" 오버로드 메서드 update(docId, me, req)를 호출합니다.
-    // 3) 작성자 불일치 시 403(Forbidden), 기타 오류 시 400(Bad Request)로 응답합니다.
     @PutMapping("/{docId}")
     public ResponseEntity<String> update(@PathVariable String docId,
                                          @RequestBody UpdateApprovalReq req,
@@ -97,6 +93,28 @@ public class ApprovalController {
         } catch (SecurityException se) { // ★ 추가: 작성자 아님
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("글쓴이가 아닙니다.");
         } catch (IllegalArgumentException iae) { // 문서 없음 등
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(iae.getMessage());
+        }
+    }
+
+    /* ============================================================
+     * ★ NEW: 첨부 파일 교체 업로드 (수정 화면에서 새 파일 선택 시)
+     * - 한 문서당 단일 파일(ofile/sfile) 구조를 교체합니다.
+     * - 작성자만 가능, X-Employee-Id 헤더 필수
+     * - 프런트는 multipart/form-data 로 "file" 키를 사용
+     *   POST /api/approvals/{docId}/file
+     * ============================================================ */
+    @PostMapping(path = "/{docId}/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // ★ NEW
+    public ResponseEntity<String> replaceFile(@PathVariable String docId,
+                                              @RequestPart("file") MultipartFile file,
+                                              @RequestHeader("X-Employee-Id") String eid) {
+        int me = Integer.parseInt(eid);
+        try {
+            service.replaceFile(docId, me, file); // ★ NEW
+            return ResponseEntity.ok("파일 교체 완료");
+        } catch (SecurityException se) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("글쓴이가 아닙니다.");
+        } catch (IllegalArgumentException iae) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(iae.getMessage());
         }
     }
@@ -137,10 +155,10 @@ public class ApprovalController {
         service.delete(docId, me);
     }
 
-    // 첨부 다운로드
+    // 첨부 다운로드 (기존)
     @GetMapping("/{docId}/file")
     public ResponseEntity<Resource> download(@PathVariable String docId) {
-        ApprovalService.DownloadableFile file = service.getDownloadableFile(docId);
+        var file = service.getDownloadableFile(docId);
         if (file == null || file.resource() == null) {
             return ResponseEntity.notFound().build();
         }

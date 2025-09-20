@@ -18,6 +18,24 @@ const TYPE_MAP_REV = {
   ETC: "기타",
 };
 
+/* === 공통 fetch 유틸 === */
+class HttpError extends Error {
+  constructor(status, statusText) {
+    super(`${status} ${statusText}`.trim());
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+async function fetchOk(url, init) {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new HttpError(res.status, res.statusText);
+  return res;
+}
+async function fetchJson(url, init) {
+  const res = await fetchOk(url, init);
+  try { return await res.json(); } catch { return null; }
+}
+
 function ApprovalEdit() {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
@@ -47,7 +65,7 @@ function ApprovalEdit() {
     title: "",
     type: "휴가/근무 변경", // UI 표시용
     content: "",
-    files: [], // 미리보기 전용
+    files: [], // (새로 추가할 파일만 담음)
     // TIMEOFF
     timeoffType: "ANNUAL",
     timeoffStart: "",
@@ -55,28 +73,9 @@ function ApprovalEdit() {
     timeoffReason: "",
   });
 
+  const [existingFileName, setExistingFileName] = useState(""); // ★ NEW: 기존 첨부 표시용
   const category = useMemo(() => TYPE_MAP[form.type] || "ETC", [form.type]);
   const isTimeoff = category === "TIMEOFF";
-
-  const styles = {
-    hero: {
-      height: 300,
-      backgroundImage: "url('/Generated.png')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      position: "relative",
-    },
-    heroMask: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 0 },
-    heroContent: {
-      position: "relative",
-      zIndex: 1,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100%",
-    },
-    heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,38 +96,35 @@ function ApprovalEdit() {
       setLoading(true);
       setErr(null);
       try {
-        const res = await fetch(
+        const data = await fetchJson(
           `${API_BASE}/api/approvals/${encodeURIComponent(docId)}`,
           { method: "GET", headers: { Accept: "application/json" }, signal: ctrl.signal }
         );
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(`상세 조회 실패 (${res.status}) ${txt}`);
-        }
-        const data = await res.json();
 
         // 카테고리 → UI 라벨
-        const uiType = TYPE_MAP_REV[data.approvalCategory] || "기타";
+        const uiType = TYPE_MAP_REV[data?.approvalCategory] || "기타";
 
         // TIMEOFF 데이터 방어적으로 파싱 (timeoff 객체 또는 낱개 필드 모두 지원)
-        const to = data.timeoff || {};
-        const timeoffType  = to.timeoffType || to.type || data.timeoffType || "ANNUAL";
-        const timeoffStart = to.start || data.timeoffStart || "";
-        const timeoffEnd   = to.end || data.timeoffEnd || "";
-        const timeoffReason= to.reason || data.timeoffReason || "";
+        const to = data?.timeoff || {};
+        const timeoffType  = to.timeoffType || to.type || data?.timeoffType || "ANNUAL";
+        const timeoffStart = to.start || data?.timeoffStart || "";
+        const timeoffEnd   = to.end || data?.timeoffEnd || "";
+        const timeoffReason= to.reason || data?.timeoffReason || "";
 
         setForm({
-          title: data.approvalTitle ?? "",
+          title: data?.approvalTitle ?? "",
           type: uiType,
-          content: data.approvalContent ?? "",
+          content: data?.approvalContent ?? "",
           files: [],
           timeoffType,
           timeoffStart,
           timeoffEnd,
           timeoffReason,
         });
+
+        setExistingFileName(data?.ofile || ""); // ★ NEW: 기존 첨부 파일명 표시
       } catch (e) {
-        if (e.name !== "AbortError") setErr(e.message || String(e));
+        if (e?.name !== "AbortError") setErr(e?.message || String(e));
       } finally {
         setLoading(false);
       }
@@ -147,21 +143,35 @@ function ApprovalEdit() {
     return null;
   };
 
-  // PUT 우선 → 405면 PATCH 재시도
+  // PUT 우선 → 405면 PATCH 재시도 (기존 유지)
   const updateDoc = async (payload, headers) => {
-    let res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(payload),
-    });
-    if (res.status === 405) {
-      res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify(payload),
-      });
+    const url = `${API_BASE}/api/approvals/${encodeURIComponent(docId)}`;
+    try {
+      return await fetchOk(url, { method: "PUT", headers, body: JSON.stringify(payload) });
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 405) {
+        return await fetchOk(url, { method: "PATCH", headers, body: JSON.stringify(payload) });
+      }
+      throw e;
     }
-    return res;
+  };
+
+  /* =========================
+     ★ NEW: 파일 교체 업로드
+     - 백엔드: POST /api/approvals/{docId}/file (키: "file")
+     - 한 문서당 단일 파일 구조 → 첫 번째 선택 파일만 사용
+     ========================= */
+  const uploadNewFileIfAny = async () => {
+    if (!form.files?.length) return;
+    const fd = new FormData();
+    fd.append("file", form.files[0]); // 첫 번째 파일만 사용
+
+    const headers = { Accept: "application/json" };
+    if (employeeId && /^\d+$/.test(employeeId)) {
+      headers["X-Employee-Id"] = String(Number(employeeId));
+    }
+    const url = `${API_BASE}/api/approvals/${encodeURIComponent(docId)}/file`;
+    await fetchOk(url, { method: "POST", headers, body: fd });
   };
 
   const handleSubmit = async (e) => {
@@ -192,31 +202,27 @@ function ApprovalEdit() {
         headers["X-Employee-Id"] = String(Number(employeeId));
       }
 
-      const res = await updateDoc(payload, headers);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`수정 실패 (${res.status}) ${txt}`);
-      }
+      // 1) 문서 본문 업데이트 (JSON)
+      await updateDoc(payload, headers);
+
+      // 2) 새 파일 있으면 교체 업로드 (multipart)
+      await uploadNewFileIfAny(); // ★ NEW
 
       alert("수정되었습니다.");
       navigate(`/ApprovalView/${encodeURIComponent(docId)}`);
     } catch (e2) {
-      setErr(e2.message || String(e2));
+      setErr(e2?.message || String(e2));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="bg-light min-vh-100 d-flex flex-column">
-      <header>
-        <section style={styles.hero}>
-          <div style={styles.heroMask} />
-          <div style={styles.heroContent}>
-            <h1 style={styles.heroTitle}>문서 수정</h1>
-          </div>
-        </section>
-      </header>
+    <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">문서 수정</h1>
+      </div>
 
       <main className="container-xxl py-4 flex-grow-1">
         {err && <div className="alert alert-danger" role="alert">{err}</div>}
@@ -284,19 +290,36 @@ function ApprovalEdit() {
                     />
                   </div>
 
-                  {/* 첨부: 미리보기만, 전송 X */}
+                  {/* ★ NEW: 기존 첨부 표시(유지됨) + 다운로드 링크 */}
                   <div className="col-12">
-                    <label className="form-label">첨부</label>
-                    <input className="form-control" type="file" multiple onChange={handleFiles} />
+                    <label className="form-label">기존 첨부</label>
+                    {existingFileName ? (
+                      <div className="small">
+                        <a
+                          href={`${API_BASE}/api/approvals/${encodeURIComponent(docId)}/file`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {existingFileName}
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="form-text">기존 첨부가 없습니다.</div>
+                    )}
+                  </div>
+
+                  {/* 첨부: 새 파일 선택 → 저장 시 교체 업로드 */}
+                  <div className="col-12">
+                    <label className="form-label">새로 업로드할 첨부</label>
+                    <input className="form-control" type="file" onChange={handleFiles} />
                     {form.files?.length > 0 && (
                       <ul className="small text-muted mb-0 mt-2">
-                        {form.files.map((f, i) => (
-                          <li key={i}>
-                            {f.name} ({Math.round(f.size / 1024)} KB)
-                          </li>
-                        ))}
+                        <li>{form.files[0].name} ({Math.round(form.files[0].size / 1024)} KB)</li>
                       </ul>
                     )}
+                    <div className="form-text">
+                      새 파일을 선택하고 <strong>저장</strong>하면 기존 파일이 교체됩니다.
+                    </div>
                   </div>
                 </div>
               </div>

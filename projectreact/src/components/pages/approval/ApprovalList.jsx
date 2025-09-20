@@ -1,8 +1,26 @@
 // src/pages/ApprovalList.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom"; // ★ 정리: useNavigate/useAuth 제거
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
+
+/* === 공통 유틸(중복/과한 예외처리 축소) === */
+class HttpError extends Error {
+  constructor(status, statusText) {
+    super(`${status} ${statusText}`.trim());
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+async function fetchOk(url, init) {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new HttpError(res.status, res.statusText);
+  return res;
+}
+async function fetchJson(url, init) {
+  const res = await fetchOk(url, init);
+  try { return await res.json(); } catch { return null; }
+}
 
 const statusInfo = (s) => {
   switch (s) {
@@ -12,6 +30,18 @@ const statusInfo = (s) => {
     default:         return { label: s || "-", cls: "badge rounded-pill bg-secondary" };
   }
 };
+
+const statusLabel = (s) =>
+  s === "ALL" ? "전체 상태"
+  : s === "PENDING" ? "대기"
+  : s === "APPROVED" ? "승인"
+  : s === "REJECTED" ? "반려"
+  : s;
+
+const categoryLabel = (c) =>
+  c === "TIMEOFF" ? "휴가/근무 변경"
+  : c === "SHIFT" ? "근무 교대"
+  : "기타";
 
 const fmtDate = (s) => {
   if (!s) return "-";
@@ -63,25 +93,24 @@ function ApprovalList() {
         params.set("size", String(SIZE));
         if (status && status !== "ALL") params.set("status", status);
 
-        const res = await fetch(`${API_BASE}/api/approvals?` + params.toString(), {
+        const data = await fetchJson(`${API_BASE}/api/approvals?${params.toString()}`, {
           headers: { Accept: "application/json" },
           signal: ctrl.signal,
         });
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(`목록 조회 실패 (${res.status}) ${txt}`);
-        }
-        const data = await res.json();
-        setRows(Array.isArray(data.content) ? data.content : []);
-        setPageInfo({
-          totalPages: data.totalPages ?? 0,
-          totalElements: data.totalElements ?? 0,
-          number: data.number ?? page,
-          first: data.first ?? (page === 0),
-          last: data.last ?? ((data.number ?? page) >= ((data.totalPages ?? 0) - 1)),
-        });
+
+        const {
+          content = [],
+          totalPages = 0,
+          totalElements = 0,
+          number = page,
+          first = (page === 0),
+          last = (number >= (totalPages - 1)),
+        } = data || {};
+
+        setRows(Array.isArray(content) ? content : []);
+        setPageInfo({ totalPages, totalElements, number, first, last });
       } catch (e) {
-        if (e.name !== "AbortError") setErr(e.message || String(e));
+        if (e?.name !== "AbortError") setErr(e?.message || String(e));
       } finally {
         setLoading(false);
       }
@@ -89,19 +118,6 @@ function ApprovalList() {
     load();
     return () => ctrl.abort();
   }, [page, status]);
-
-  const styles = useMemo(() => ({
-    hero: {
-      height: 300,
-      backgroundImage: "url('/Generated.png')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      position: "relative",
-    },
-    heroMask: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 0 },
-    heroContent: { position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", height: "100%" },
-    heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
-  }), []);
 
   const goPrev = useCallback(() => {
     if (pageInfo.first) return;
@@ -114,15 +130,11 @@ function ApprovalList() {
   }, [pageInfo.last]);
 
   return (
-    <div className="bg-light min-vh-100 d-flex flex-column">
-      <header>
-        <section style={styles.hero}>
-          <div style={styles.heroMask} />
-          <div style={styles.heroContent}>
-            <h1 style={styles.heroTitle}>전자 결재</h1>
-          </div>
-        </section>
-      </header>
+    <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">전가 결재</h1>
+      </div>
 
       <main className="container-xxl py-4 flex-grow-1">
         {/* 상단 바 */}
@@ -130,16 +142,13 @@ function ApprovalList() {
           {/* 상태 필터 */}
           <div className="dropdown">
             <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
-              {status === "ALL" ? "전체 상태"
-                : status === "PENDING" ? "대기"
-                : status === "APPROVED" ? "승인"
-                : status === "REJECTED" ? "반려" : status}
+              {statusLabel(status)}
             </button>
             <ul className="dropdown-menu">
               {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
                 <li key={s}>
                   <button className="dropdown-item" onClick={() => { setPage(0); setStatus(s); }}>
-                    {s === "ALL" ? "전체 상태" : s === "PENDING" ? "대기" : s === "APPROVED" ? "승인" : "반려"}
+                    {statusLabel(s)}
                   </button>
                 </li>
               ))}
@@ -217,11 +226,7 @@ function ApprovalList() {
                           <span className="badge rounded-pill bg-warning text-dark ms-2 align-middle">N</span>
                         )}
                       </td>
-                      <td className="text-center">
-                        {r.approvalCategory === "TIMEOFF" ? "휴가/근무 변경"
-                          : r.approvalCategory === "SHIFT" ? "근무 교대"
-                          : "기타"}
-                      </td>
+                      <td className="text-center">{categoryLabel(r.approvalCategory)}</td>
                       <td className="text-center">{r.approvalAuthor}</td>
                       <td className="text-center">{fmtDate(r.approvalDate)}</td>
                       <td className="text-center"><span className={info.cls}>{info.label}</span></td>

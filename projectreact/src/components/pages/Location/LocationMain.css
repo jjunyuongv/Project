@@ -1,0 +1,61 @@
+/* 공통 폭 제한 (중앙 정렬) */
+.section-narrow {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* 상단 안내 + 버튼 영역 */
+.location-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px auto 12px;
+  padding: 0 8px;
+  flex-wrap: wrap;
+}
+
+.location-address {
+  font-size: 14px;
+  color: #555;
+}
+
+/* 길찾기 버튼 */
+.directions-btn {
+  margin-left: auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #eef2ff;       /* 연한 라벤더-블루 */
+  color: #1e40af;            /* 진한 블루 텍스트 */
+  border: 1px solid #c7d2fe; /* 옅은 보더 */
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.06s ease, filter 0.15s ease;
+}
+
+.directions-btn:hover {
+  filter: brightness(0.98);
+}
+
+.directions-btn:active {
+  transform: translateY(1px);
+}
+
+.directions-btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* 지도 카드 */
+.map-card {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+}
+
+/* 구글맵 컨테이너 (className로 적용) */
+.map-container {
+  width: 100%;
+  height: 360px;
+}

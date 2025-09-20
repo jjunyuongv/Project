@@ -68,6 +68,18 @@ async function apiJoinRoom(roomId, meId) {
   return r.json();
 }
 
+/* 🔹 직원 이름 조회 (없으면 null) */
+async function apiGetEmployeeName(userId) {
+  try {
+    const r = await fetch(`/api/employees/${userId}`, { credentials: "include" });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data?.employeeName ?? data?.name ?? data?.fullName ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /* =============================== */
 /* ======== 작은 UI 컴포넌트 ======== */
 /* =============================== */
@@ -279,6 +291,16 @@ function CreateRoomModal({ open, onClose, onCreated, meId }) {
 }
 
 /* =============================== */
+/* =========== 유틸 ============== */
+/* =============================== */
+/** roomId 기준으로 중복 제거 (마지막 항목 우선) */
+function dedupeRoomsById(list) {
+  const map = new Map();
+  for (const r of list) map.set(r.roomId, { ...map.get(r.roomId), ...r });
+  return Array.from(map.values());
+}
+
+/* =============================== */
 /* =========== 메 인 ============= */
 /* =============================== */
 export default function ChatMain() {
@@ -302,7 +324,7 @@ export default function ChatMain() {
 
   /* 메시지 */
   const [messages, setMessages] = useState([]);
-  // ★ 수정: 오타 제거 (불필요한 'the' 라인 삭제)
+  const msgIdsRef = useRef(new Set());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const msgRef = useRef(null);
@@ -341,7 +363,7 @@ export default function ChatMain() {
   const roomSubRef = useRef(null);
   const userSubRef = useRef(null);
 
-  /* ✅ 로그인 상태에만 meId 세팅 */
+  /* 로그인 상태에만 meId 세팅 */
   useEffect(() => {
     if (isLoggedIn && user?.employeeId) {
       setMeId(Number(user.employeeId));
@@ -353,16 +375,26 @@ export default function ChatMain() {
   /* 방 목록 로딩 */
   async function reloadRooms(currentMe) {
     const list = await apiGetMyRooms(currentMe);
+
     const previews = await Promise.all(
       list.map(async ({ roomId, peerId, peerName, name, type }) => {
         try {
+          // 1) DIRECT인데 peerName이 비어 있으면 employee_name 보강
+          let resolvedPeerName = peerName;
+          if (type === "DIRECT" && peerId && (!resolvedPeerName || !String(resolvedPeerName).trim())) {
+            const found = await apiGetEmployeeName(peerId);
+            if (found) resolvedPeerName = found;
+          }
+
+          // 2) 마지막 메시지 프리뷰
           const arr = await apiGetMessages(roomId, { size: 1 });
           const last = arr[0];
+
           return {
             roomId,
             peerId,
-            peerName,
-            name,
+            peerName: resolvedPeerName ?? null,
+            name,   // 그룹은 생성 이름 사용
             type,
             lastText: last?.content ?? "",
             lastTime: last?.time ?? null,
@@ -373,9 +405,11 @@ export default function ChatMain() {
         }
       })
     );
-    setRooms(previews);
-    if (previews.length && !previews.some((p) => p.roomId === activeRoomIdRef.current)) {
-      setActiveRoomId(previews[0].roomId);
+
+    const uniq = dedupeRoomsById(previews);
+    setRooms(uniq);
+    if (uniq.length && !uniq.some((p) => p.roomId === activeRoomIdRef.current)) {
+      setActiveRoomId(uniq[0].roomId);
     }
   }
 
@@ -388,29 +422,25 @@ export default function ChatMain() {
   /* 방 채널 구독 */
   function subscribeRoom(roomId) {
     if (!stompRef.current || !stompRef.current.connected || !roomId) return;
-    try {
-      roomSubRef.current?.unsubscribe();
-    } catch (e) {
-      console.warn(e);
-    }
+    roomSubRef.current?.unsubscribe();
+
     roomSubRef.current = stompRef.current.subscribe(`/topic/rooms/${roomId}`, (frame) => {
       const msg = JSON.parse(frame.body);
+
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r.roomId === roomId ? { ...r, lastText: msg.content, lastTime: msg.time } : r
+        )
+      );
+
       if (roomId === activeRoomIdRef.current) {
-        setMessages((prev) => [...prev, msg]);
+        if (!msgIdsRef.current.has(msg.id)) {
+          msgIdsRef.current.add(msg.id);
+          setMessages((prev) => [...prev, msg]);
+        }
         clearUnread(roomId);
-        setRooms((prevRooms) =>
-          prevRooms.map((r) =>
-            r.roomId === roomId ? { ...r, lastText: msg.content, lastTime: msg.time } : r
-          )
-        );
         const sc = msgRef.current;
         if (sc) sc.scrollTop = sc.scrollHeight + 999;
-      } else {
-        setRooms((prevRooms) =>
-          prevRooms.map((r) =>
-            r.roomId === roomId ? { ...r, lastText: msg.content, lastTime: msg.time } : r
-          )
-        );
       }
     });
   }
@@ -418,39 +448,45 @@ export default function ChatMain() {
   /* 사용자 알림 채널 구독 */
   function subscribeUserAlerts(uid) {
     if (!stompRef.current || !stompRef.current.connected || !uid) return;
-    try {
-      userSubRef.current?.unsubscribe();
-    } catch (e) {
-      console.warn(e);
-    }
+    userSubRef.current?.unsubscribe();
+
     userSubRef.current = stompRef.current.subscribe(`/topic/users/${uid}/alerts`, async (frame) => {
       const alert = JSON.parse(frame.body); // {type, roomId, fromUserId, preview, time}
+
       if (alert.type === "NEW_MESSAGE") {
         setRooms((prev) =>
           prev.map((r) =>
             r.roomId === alert.roomId ? { ...r, lastText: alert.preview ?? "", lastTime: alert.time } : r
           )
         );
+
         if (activeRoomIdRef.current !== alert.roomId && alert.fromUserId !== uid) {
           incUnread(alert.roomId);
           pushToast("새 메시지", alert.preview ?? "");
         }
-        // 새 방이면 목록 갱신
-        if (!rooms.some((r) => r.roomId === alert.roomId)) {
-          try {
-            await reloadRooms(uid);
-          } catch (e) {
-            console.error(e);
-          }
+
+        try {
+          await reloadRooms(uid);
+        } catch (e) {
+          console.error(e);
         }
       } else if (alert.type === "INVITED") {
         setRooms((prev) => {
           if (prev.some((r) => r.roomId === alert.roomId)) return prev;
           const title = alert.preview || `그룹 ${alert.roomId}`;
-          return [
-            { roomId: alert.roomId, peerId: null, peerName: null, name: title, type: "GROUP", lastText: "", lastTime: alert.time },
+          const next = [
+            {
+              roomId: alert.roomId,
+              peerId: null,
+              peerName: null,
+              name: title,           // 그룹 방 제목 = 생성 시 이름
+              type: "GROUP",
+              lastText: "",
+              lastTime: alert.time,
+            },
             ...prev,
           ];
+          return dedupeRoomsById(next);
         });
         incUnread(alert.roomId);
         pushToast("그룹 초대", alert.preview || `방 #${alert.roomId}에 초대되었습니다.`);
@@ -459,13 +495,14 @@ export default function ChatMain() {
         if (activeRoomIdRef.current === alert.roomId) {
           setActiveRoomId(null);
           setMessages([]);
+          msgIdsRef.current.clear();
         }
         pushToast("방 삭제됨", `방 #${alert.roomId}이(가) 삭제되었습니다.`);
       }
     });
   }
 
-  /* ✅ STOMP 연결: 로그인 상태에서만 활성화 */
+  /* STOMP 연결 */
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -487,21 +524,9 @@ export default function ChatMain() {
     window.addEventListener("focus", onFocus);
 
     return () => {
-      try {
-        roomSubRef.current?.unsubscribe();
-      } catch (e) {
-        console.warn(e);
-      }
-      try {
-        userSubRef.current?.unsubscribe();
-      } catch (e) {
-        console.warn(e);
-      }
-      try {
-        client.deactivate();
-      } catch (e) {
-        console.warn(e);
-      }
+      roomSubRef.current?.unsubscribe();
+      userSubRef.current?.unsubscribe();
+      client.deactivate();
       window.removeEventListener("focus", onFocus);
     };
   }, [isLoggedIn]);
@@ -524,8 +549,11 @@ export default function ChatMain() {
     (async () => {
       try {
         setLoading(true);
+        msgIdsRef.current.clear();
         const latestToOld = await apiGetMessages(activeRoomId, { size: 50 });
-        setMessages(latestToOld.slice().reverse());
+        const asc = latestToOld.slice().reverse();
+        for (const m of asc) msgIdsRef.current.add(m.id);
+        setMessages(asc);
         setTimeout(() => {
           const sc = msgRef.current;
           if (sc) sc.scrollTop = sc.scrollHeight + 999;
@@ -545,12 +573,11 @@ export default function ChatMain() {
     try {
       const more = await apiGetMessages(activeRoomId, { size: 50, beforeId: oldest });
       if (!more.length) return;
-      const add = more.reverse();
-      setMessages((prev) => {
-        const seen = new Set(prev.map((m) => m.id));
-        const uniq = add.filter((m) => !seen.has(m.id));
-        return uniq.length ? [...uniq, ...prev] : prev;
-      });
+      const addAsc = more.reverse();
+      const uniq = addAsc.filter((m) => !msgIdsRef.current.has(m.id));
+      if (!uniq.length) return;
+      for (const m of uniq) msgIdsRef.current.add(m.id);
+      setMessages((prev) => [...uniq, ...prev]);
     } catch (e) {
       console.error("loadMore fail:", e);
     }
@@ -578,11 +605,7 @@ export default function ChatMain() {
     if (!rid || !meId) return;
     try {
       await apiLeaveRoom(rid, meId);
-      try {
-        roomSubRef.current?.unsubscribe();
-      } catch (e) {
-        console.warn(e);
-      }
+      roomSubRef.current?.unsubscribe();
       setRooms((prev) => {
         const filtered = prev.filter((r) => r.roomId !== rid);
         const next = filtered[0];
@@ -590,35 +613,35 @@ export default function ChatMain() {
         return filtered;
       });
       setMessages([]);
+      msgIdsRef.current.clear();
       clearUnread(rid);
     } catch (e) {
       console.error("leave room failed", e);
     }
   }
 
-  /* 좌측 방 목록 필터링 */
+  /* 좌측 방 목록 필터링 (렌더 직전에 한번 더 dedupe) */
   const filteredRooms = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rooms;
-    return rooms.filter(
-      (r) =>
-        String(r.roomId).includes(q) ||
-        String(r.peerId ?? "").includes(q) ||
-        (r.peerName ?? "").toLowerCase().includes(q) ||
-        (r.name ?? "").toLowerCase().includes(q) ||
-        (r.lastText ?? "").toLowerCase().includes(q)
-    );
+    const base = q
+      ? rooms.filter(
+          (r) =>
+            String(r.roomId).includes(q) ||
+            String(r.peerId ?? "").includes(q) ||
+            (r.peerName ?? "").toLowerCase().includes(q) ||
+            (r.name ?? "").toLowerCase().includes(q) ||
+            (r.lastText ?? "").toLowerCase().includes(q)
+        )
+      : rooms;
+    return dedupeRoomsById(base);
   }, [rooms, query]);
 
   const activeRoom = rooms.find((r) => r.roomId === activeRoomId);
   const activeTitle = activeRoomId
-    ? activeRoom?.peerId && activeRoom?.type === "DIRECT"
-      ? activeRoom?.peerName || `상대 ${activeRoom.peerId}`
-      : activeRoom?.name || `그룹 ${activeRoomId}`
+    ? activeRoom?.type === "DIRECT"
+      ? (activeRoom?.peerName || `상대 ${activeRoom?.peerId}`)
+      : (activeRoom?.name || `그룹 ${activeRoomId}`)
     : "방을 선택하세요";
-
-  // ★ 수정: 전역 ProtectedRoute가 모달/리다이렉트를 전담하므로
-  //   여기에서 비로그인 시 조기 return(null) 하던 코드를 제거했습니다.
 
   return (
     <div className="dm bg-light min-vh-100 d-flex flex-column">
@@ -627,7 +650,7 @@ export default function ChatMain() {
           <div className="hero__mask" />
           <div className="hero__content">
             <h1 className="hero__title">
-              {activeRoom?.type === "DIRECT" ? activeRoom?.peerName || "채팅" : "채팅"}
+              {activeRoom?.type === "DIRECT" ? activeRoom?.peerName || "채팅" : (activeRoom?.name || "채팅")}
             </h1>
           </div>
         </section>
@@ -688,12 +711,12 @@ export default function ChatMain() {
 
               <div className="list-group list-group-flush flex-grow-1 overflow-auto dm-scroll-soft">
                 {filteredRooms.map((r) => {
-                  const isGroup = !r.peerId || r.type === "GROUP";
-                  const title = isGroup ? r.name || `그룹 ${r.roomId}` : r.peerName || `상대 ${r.peerId}`;
+                  const isGroup = r.type === "GROUP" || !r.peerId;
+                  const title = isGroup ? (r.name || `그룹 ${r.roomId}`) : (r.peerName || `상대 ${r.peerId}`);
                   const unreadCnt = unread[r.roomId] || 0;
                   return (
                     <button
-                      key={r.roomId}
+                      key={`room-${r.roomId}`}
                       onClick={() => {
                         setActiveRoomId(r.roomId);
                         clearUnread(r.roomId);
@@ -775,7 +798,7 @@ export default function ChatMain() {
                 }}
               >
                 {messages.map((m) => (
-                  <div key={m.id} className="mb-2">
+                  <div key={`msg-${m.id}`} className="mb-2">
                     <MessageBubble
                       who={m.senderId === meId ? "me" : "them"}
                       text={m.content}
@@ -829,36 +852,46 @@ export default function ChatMain() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         meId={meId}
-        onCreated={({ kind, data, fallbackPeer }) => {
+        onCreated={async ({ kind, data, fallbackPeer }) => {
           if (kind === "DIRECT") {
             const peerId = data.peerId ?? fallbackPeer ?? null;
-            const peerName = data.peerName ?? null;
-            setRooms((prev) => [
-              {
-                roomId: data.roomId,
-                peerId,
-                peerName,
-                name: data.name,
-                type: data.type,
-                lastText: "",
-                lastTime: data.createdAt,
-              },
-              ...prev,
-            ]);
+            // 🔸 peerName 없으면 employee_name 조회
+            let peerName = data.peerName ?? null;
+            if (peerId && (!peerName || !String(peerName).trim())) {
+              const found = await apiGetEmployeeName(peerId);
+              if (found) peerName = found;
+            }
+            setRooms((prev) =>
+              dedupeRoomsById([
+                {
+                  roomId: data.roomId,
+                  peerId,
+                  peerName,
+                  name: data.name, // DM 시스템명은 쓰지 않음
+                  type: data.type,
+                  lastText: "",
+                  lastTime: data.createdAt,
+                },
+                ...prev,
+              ])
+            );
             setActiveRoomId(data.roomId);
           } else {
-            setRooms((prev) => [
-              {
-                roomId: data.roomId,
-                peerId: null,
-                peerName: null,
-                name: data.name,
-                type: data.type,
-                lastText: "",
-                lastTime: data.createdAt,
-              },
-              ...prev,
-            ]);
+            // 그룹은 생성 시 이름 사용
+            setRooms((prev) =>
+              dedupeRoomsById([
+                {
+                  roomId: data.roomId,
+                  peerId: null,
+                  peerName: null,
+                  name: data.name, // ← 그룹명
+                  type: data.type,
+                  lastText: "",
+                  lastTime: data.createdAt,
+                },
+                ...prev,
+              ])
+            );
             setActiveRoomId(data.roomId);
           }
           clearUnread(data.roomId);

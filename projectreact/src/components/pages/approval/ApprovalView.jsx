@@ -8,22 +8,27 @@ const DEV_EMP_ID = import.meta?.env?.VITE_DEV_EMP_ID || null;
 // 프로젝트 구조에 맞춰 경로 확인: { useAuth }가 맞는지(네임드) / default 인지 꼭 확인!
 import { useAuth } from "../LoginForm/AuthContext";
 
+/* 공통 유틸 */
+const safeParse = (raw) => {
+  try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+};
+
+async function apiFetch(input, init) {
+  const res = await fetch(input, init);
+  if (!res.ok) {
+    // 간결한 오류 메시지(과한 예외 정보 제거)
+    throw new Error(`${res.status} ${res.statusText}`.trim());
+  }
+  // JSON 응답만 시도 (상세/결과 API는 모두 JSON)
+  try { return await res.json(); } catch { return null; }
+}
+
 /* localStorage("me")에서 로그인 사용자 정보 읽기 (폴백용) */
 function useCurrentUser() {
-  const [me, setMe] = useState(() => {
-    try {
-      const raw = localStorage.getItem("me");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [me, setMe] = useState(() => safeParse(localStorage.getItem("me")));
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === "me") {
-        try { setMe(e.newValue ? JSON.parse(e.newValue) : null); }
-        catch { setMe(null); }
-      }
+      if (e.key === "me") setMe(safeParse(e.newValue));
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -79,12 +84,9 @@ function ApprovalView() {
   const { id, num } = useParams();
   const docId = id ?? num;
 
-  // ✅ 로그인/역할: 네가 준 isManager 스타일 그대로 사용
+  // ✅ 로그인/역할
   const { isLoggedIn, user } = useAuth();
-  let isManager = false;
-  if (isLoggedIn) {
-    isManager = user?.role === "MANAGER" ? true : false;
-  }
+  const isManager = isLoggedIn && user?.role === "MANAGER";
 
   // 폴백용 localStorage me
   const me = useCurrentUser();
@@ -108,22 +110,19 @@ function ApprovalView() {
     if (!docId) return;
     const ctrl = new AbortController();
     (async () => {
-      setLoading(true); setErr(null);
+      setLoading(true);
+      setErr(null);
       try {
         const headers = { Accept: "application/json" };
-        if (myEmpId) {
-          headers["X-Employee-Id"] = myEmpId;
-        } else {
-          console.warn("[ApprovalView] 사번을 찾지 못했습니다. 상세 권한 플래그는 false로 내려올 수 있습니다.");
-        }
-        const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
-          headers, signal: ctrl.signal,
-        });
-        if (!res.ok) throw new Error(`상세 조회 실패 (${res.status})`);
-        const data = await res.json();
+        if (myEmpId) headers["X-Employee-Id"] = myEmpId;
+        const data = await apiFetch(
+          `${API_BASE}/api/approvals/${encodeURIComponent(docId)}`,
+          { headers, signal: ctrl.signal }
+        );
         setDoc(data);
       } catch (e) {
-        if (e.name !== "AbortError") setErr(e.message || String(e));
+        // AbortError는 조용히 무시
+        if (e?.name !== "AbortError") setErr(String(e?.message || e));
       } finally {
         setLoading(false);
       }
@@ -138,13 +137,9 @@ function ApprovalView() {
   }, [doc]);
 
   // 서버 canApprove 우선(없으면 false로 간주)
-  const canDecide = useMemo(() => {
-    if (!doc) return false;
-    if (typeof doc.canApprove === "boolean") {
-      return doc.approvalStatus === "PENDING" && doc.canApprove === true;
-    }
-    return false;
-  }, [doc]);
+  const canDecide = useMemo(() =>
+    !!doc && doc.approvalStatus === "PENDING" && doc?.canApprove === true
+  , [doc]);
 
   // 서버 canDelete 우선(없으면 작성자 & 미승인)
   const canDelete = useMemo(() => {
@@ -154,15 +149,14 @@ function ApprovalView() {
     return isOwner && doc.approvalStatus !== "APPROVED";
   }, [doc, myEmpId]);
 
-  // 🔒 UI 노출 조건: “매니저만 보이도록” 명시적으로 제한
+  // 🔒 UI 노출 조건: 매니저 제한
   const canDecideUI = isManager && canDecide;
   const canDeleteUI = isManager && canDelete;
 
-  // 🔒 작성자 여부 (수정 버튼 클릭 시 검사에 사용)
-  const isOwner = useMemo(() => {
-    if (!doc || !myEmpId) return false;
-    return String(doc.approvalAuthor) === String(myEmpId);
-  }, [doc, myEmpId]);
+  // 🔒 작성자 여부 (수정 버튼 클릭 시 검사)
+  const isOwner = useMemo(() =>
+    !!doc && !!myEmpId && String(doc.approvalAuthor) === String(myEmpId)
+  , [doc, myEmpId]);
 
   // 승인/반려
   const decide = async (action, reason) => {
@@ -170,24 +164,23 @@ function ApprovalView() {
     if (!myEmpId) { alert("로그인 정보(사번)를 찾지 못했습니다. 다시 로그인해 주세요."); return; }
     setDeciding(true);
     try {
-      const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}/${action}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "X-Employee-Id": myEmpId,
-        },
-        body: JSON.stringify(reason ? { opinion: reason } : {}),
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`${action} 실패 (${res.status}) ${txt}`);
-      }
+      await apiFetch(
+        `${API_BASE}/api/approvals/${encodeURIComponent(docId)}/${action}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "X-Employee-Id": myEmpId,
+          },
+          body: JSON.stringify(reason ? { opinion: reason } : {}),
+        }
+      );
       navigate(0);
       setRejectOpen(false);
       setRejectReason("");
     } catch (e) {
-      alert(e.message || String(e));
+      alert(String(e?.message || e));
     } finally {
       setDeciding(false);
     }
@@ -202,21 +195,17 @@ function ApprovalView() {
     }
     setDeleting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/approvals/${encodeURIComponent(docId)}`, {
-        method: "DELETE",
-        headers: {
-          Accept: "application/json",
-          "X-Employee-Id": myEmpId,
-        },
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`삭제 실패 (${res.status}) ${txt}`);
-      }
+      await apiFetch(
+        `${API_BASE}/api/approvals/${encodeURIComponent(docId)}`,
+        {
+          method: "DELETE",
+          headers: { Accept: "application/json", "X-Employee-Id": myEmpId },
+        }
+      );
       alert("삭제되었습니다.");
       navigate(`/ApprovalList${loc.search || ""}`);
     } catch (e) {
-      alert(e.message || String(e));
+      alert(String(e?.message || e));
     } finally {
       setDeleting(false);
     }
@@ -233,24 +222,14 @@ function ApprovalView() {
     navigate(`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`);
   };
 
-  const styles = {
-    pre: { whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 180 },
-    hero: { height: 300, backgroundImage: "url('/Generated.png')", backgroundSize: "cover", backgroundPosition: "center", position: "relative" },
-    heroMask: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 0 },
-    heroContent: { position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", height: "100%" },
-    heroTitle: { color: "#fff", fontSize: "44px", fontWeight: 800, letterSpacing: "2px", textShadow: "0 2px 12px rgba(0,0,0,0.35)", margin: 0 },
-  };
-
   const infoDoc = statusBadgeInfo(doc?.approvalStatus);
 
   return (
-    <div className="bg-light min-vh-100 d-flex flex-column">
-      <header>
-        <section style={styles.hero}>
-          <div style={styles.heroMask} />
-          <div style={styles.heroContent}><h1 style={styles.heroTitle}>상세 보기</h1></div>
-        </section>
-      </header>
+    <div className="boardpage">
+      <div className="hero">
+        <div className="hero__overlay" />
+        <h1 className="hero__title">상세 보기</h1>
+      </div>
 
       <main className="container-xxl py-4 flex-grow-1">
         {!myEmpId && (
@@ -277,7 +256,6 @@ function ApprovalView() {
               className="btn btn-outline-danger"
               onClick={handleDelete}
               disabled={deleting}
-              title="삭제 권한 있음"
             >
               {deleting ? (
                 <>

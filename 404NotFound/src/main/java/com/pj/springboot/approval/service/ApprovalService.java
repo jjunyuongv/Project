@@ -14,7 +14,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile; // ★ NEW
 
 import com.pj.springboot.approval.ApprovalDoc;
 import com.pj.springboot.approval.ApprovalLine;
@@ -159,7 +159,7 @@ public class ApprovalService {
     }
 
     /* 생성 */
-    public String create(CreateApprovalReq req, int author, MultipartFile file) {
+    public String create(com.pj.springboot.approval.dto.CreateApprovalReq req, int author, MultipartFile file) {
         String docId = generateDocId();
 
         ApprovalDoc d = new ApprovalDoc();
@@ -188,7 +188,7 @@ public class ApprovalService {
 
         if (req.getLines() != null && !req.getLines().isEmpty()) {
             req.getLines().stream()
-                    .sorted(Comparator.comparing(CreateApprovalReq.LineItem::getApprovalSequence))
+                    .sorted(Comparator.comparing(com.pj.springboot.approval.dto.CreateApprovalReq.LineItem::getApprovalSequence))
                     .forEach(li -> {
                         ApprovalLine l = new ApprovalLine();
                         l.setDoc(managed);
@@ -223,14 +223,13 @@ public class ApprovalService {
         return docId;
     }
 
-    public String create(CreateApprovalReq req, int author) { return create(req, author, null); }
+    public String create(com.pj.springboot.approval.dto.CreateApprovalReq req, int author) { return create(req, author, null); }
 
     /* ==============================
      * 수정 (오버로드 추가)
      * ============================== */
 
     // (기존) 단순 수정 메서드 — 기존 코드 유지
-    // ※ 다른 곳에서 이미 사용 중일 수 있으므로 삭제하지 않고 보존합니다.
     public void update(String docId, com.pj.springboot.approval.dto.UpdateApprovalReq req) {
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
@@ -242,7 +241,6 @@ public class ApprovalService {
     }
 
     // ★ 추가: 작성자 검증이 포함된 수정 메서드(오버로드)
-    // 컨트롤러의 update()는 이 메서드를 호출합니다.
     public void update(String docId, int me, com.pj.springboot.approval.dto.UpdateApprovalReq req) { // ★ 추가
         ApprovalDoc d = docRepo.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
@@ -381,6 +379,36 @@ public class ApprovalService {
         if (res == null || !res.exists()) return null;
 
         return new DownloadableFile(res, d.getOfile(), null);
+    }
+
+    /* =========================================================
+     * ★ NEW: 첨부 파일 교체
+     * - 작성자만 가능
+     * - 기존 sfile 물리 파일 삭제 후 새 파일 저장
+     * - ofile/sfile 갱신
+     * ========================================================= */
+    public void replaceFile(String docId, int me, MultipartFile file) { // ★ NEW
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 파일이 없습니다.");
+        }
+        ApprovalDoc d = docRepo.findById(docId)
+                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
+
+        if (d.getApprovalAuthor() == null || d.getApprovalAuthor() != me) {
+            throw new SecurityException("글쓴이가 아닙니다.");
+        }
+
+        // 기존 파일 삭제
+        if (d.getSfile() != null && !d.getSfile().isBlank()) {
+            fileUpload.deleteQuietly(d.getSfile());
+        }
+
+        // 새 파일 저장
+        FileUpload.Saved saved = fileUpload.save(file, docId);
+        d.setOfile(saved.originalName());
+        d.setSfile(saved.savedName());
+
+        docRepo.save(d);
     }
 
     // ---------- util ----------
