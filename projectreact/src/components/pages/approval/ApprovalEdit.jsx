@@ -249,7 +249,6 @@ function ApprovalEdit() {
                       readOnly
                       disabled
                     />
-                    <div className="form-text">로그인한 사번이 자동으로 입력됩니다.</div>
                   </div>
 
                   <div className="col-md-6">
