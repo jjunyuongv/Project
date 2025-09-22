@@ -105,14 +105,14 @@
   color: #0b65c2 !important;  /* 테이블 글자색 따라감 */
   font-weight: 700;
 }
-
+/* 
 .basic-button {
   border-radius: 0 !important; 
   padding: 0 16px;
 
 
 
-}
+} */
 .toolbar {
   max-width: 1100px;
   margin: 14px auto;

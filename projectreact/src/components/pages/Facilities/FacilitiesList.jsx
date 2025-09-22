@@ -227,10 +227,10 @@ function FacilitiesList(props) {
         <table className="board-table">
           <thead>
             <tr>
-              <th style={{ width: 90 }}>종류</th>
+              <th style={{ width: 100 }}>종류</th>
               <th className="w-15">시설명</th>
               <th className="w-25">위치</th>
-              <th style={{ width: 90 }}>사용여부</th>
+              <th style={{ width: 120 }}>사용여부</th>
               <th style={{ width: 120 }}>관리자명</th>
               <th className="w-10">예약</th>
               <th className="w-10">예약상황</th>

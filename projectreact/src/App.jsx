@@ -67,7 +67,6 @@ const fmtLabelDate = (dateObj) => {
 };
 const fmtTime = (raw) => {
   if (!raw) return "";
-  // 202509211130 / 20250921 1130 / 1130 / 11:30 등 웬만하면 처리
   const digits = String(raw).replace(/\D/g, "");
   const hhmm = digits.slice(-4);
   const hh = hhmm.slice(0, 2);
@@ -118,10 +117,7 @@ const normalizeFlightItem = (it) => {
 /* 특정 날짜(자정~자정)를 조회해서 정규화된 운항 리스트 반환 */
 async function fetchFlightsForDate(dateObj) {
   const schDate = toYYYYMMDD(dateObj);
-
-  // (기존에 쓰던 엔드포인트를 그대로 사용하면서, 유연하게 파라미터를 여러 개 넣어 둡니다.)
   const url = "https://apis.data.go.kr/1360000/AirInfoService/getAirInfo";
-
   try {
     const { data } = await axios.get(url, {
       params: {
@@ -129,14 +125,9 @@ async function fetchFlightsForDate(dateObj) {
         numOfRows: 200,
         pageNo: 1,
         dataType: "JSON",
-
-        // 아래 파라미터는 API가 받는/무시하는 경우가 있어도 해가 되지 않습니다.
-        // (일부 케이스: fctm=yyyymmdd, 또는 schDate=yyyymmdd 등)
         fctm: schDate,
         schDate: schDate,
-
-        // 공항: 김포(RKSS). 필요시 바꿔도 OK
-        icaoCode: "RKSS",
+        icaoCode: "RKSS", // 김포
       },
       withCredentials: false,
     });
@@ -159,16 +150,127 @@ async function fetchFlightsForDate(dateObj) {
   }
 }
 
-/* 날씨(기상청)도 기존 로직 유지 */
+/* ------------------ 기상청 단기예보(getVilageFcst) 추가 ------------------ */
+
+// 김포국제공항 좌표
+const GM_LAT = 37.5586545;
+const GM_LON = 126.7944739;
+
+// KMA 단기예보(3시간 간격) 엔드포인트
+const KMA_VILAGE_URL =
+  "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+
+/** 위경도 → KMA 단기예보 격자(nx, ny) 변환 (LCC DFS) */
+function latLonToKmaGrid(lat, lon) {
+  const RE = 6371.00877; // 지구 반경(km)
+  const GRID = 5.0;      // 격자 간격(km)
+  const SLAT1 = 30.0;    // 표준위도1
+  const SLAT2 = 60.0;    // 표준위도2
+  const OLON = 126.0;    // 기준경도
+  const OLAT = 38.0;     // 기준위도
+  const XO = 43;         // 기준점 X좌표
+  const YO = 136;        // 기준점 Y좌표
+
+  const DEGRAD = Math.PI / 180.0;
+
+  const re = RE / GRID;
+  const slat1 = SLAT1 * DEGRAD;
+  const slat2 = SLAT2 * DEGRAD;
+  const olon = OLON * DEGRAD;
+  const olat = OLAT * DEGRAD;
+
+  let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
+  let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  sf = (Math.pow(sf, sn) * Math.cos(slat1)) / sn;
+  let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
+  ro = (re * sf) / Math.pow(ro, sn);
+
+  let ra = Math.tan(Math.PI * 0.25 + (lat) * DEGRAD * 0.5);
+  ra = (re * sf) / Math.pow(ra, sn);
+  let theta = lon * DEGRAD - olon;
+  if (theta > Math.PI) theta -= 2.0 * Math.PI;
+  if (theta < -Math.PI) theta += 2.0 * Math.PI;
+  theta *= sn;
+
+  const nx = Math.floor(ra * Math.sin(theta) + XO + 0.5);
+  const ny = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
+  return { nx, ny };
+}
+
+function getKmaBaseDateTimeForVilage(now = new Date()) {
+  const t = new Date(now);
+  t.setMinutes(t.getMinutes() - 45); 
+
+  const baseHours = [2, 5, 8, 11, 14, 17, 20, 23];
+  let h = t.getHours();
+  let baseH = baseHours[0];
+
+  if (h < baseHours[0]) {
+    t.setDate(t.getDate() - 1);
+    baseH = baseHours[baseHours.length - 1]; // 23시
+  } else {
+    for (const hh of baseHours) {
+      if (h >= hh) baseH = hh;
+    }
+  }
+  const base_date = toYYYYMMDD(t);
+  const base_time = String(baseH).padStart(2, "0") + "00";
+  return { base_date, base_time };
+}
+
 async function fetchWeather() {
-  // 여기에 이미 적용된 당신의 날씨 API 호출이 있다면 그대로 쓰세요.
-  // (기존 코드에서 사용하던 URL/파라미터 유지)
-  return null;
+  try {
+    const { nx, ny } = latLonToKmaGrid(GM_LAT, GM_LON);
+    const { base_date, base_time } = getKmaBaseDateTimeForVilage();
+
+    const { data } = await axios.get(KMA_VILAGE_URL, {
+      params: {
+        serviceKey: import.meta.env.VITE_KMA_KEY, 
+        pageNo: 1,
+        numOfRows: 200,
+        dataType: "JSON",
+        base_date,
+        base_time,
+        nx,
+        ny,
+      },
+      withCredentials: false,
+    });
+
+    const items =
+      data?.response?.body?.items?.item ??
+      data?.response?.body?.items ??
+      [];
+
+    const byTime = {};
+    for (const it of items) {
+      const key = `${it.fcstDate}-${it.fcstTime}`;
+      if (!byTime[key]) byTime[key] = {};
+      byTime[key][it.category] = it.fcstValue;
+    }
+    const firstKey = Object.keys(byTime).sort()[0];
+    const pick = byTime[firstKey] || {};
+
+    const weather = {
+      temp: pick.TMP != null ? Number(pick.TMP) : null,      // 기온(℃)
+      skyCode: pick.SKY != null ? Number(pick.SKY) : null,   // 하늘상태
+      ptyCode: pick.PTY != null ? Number(pick.PTY) : null,   // 강수형태
+      windDeg: pick.VEC != null ? Number(pick.VEC) : null,   // 풍향
+      windSpeed: pick.WSD != null ? Number(pick.WSD) : null, // 풍속
+      humidity: pick.REH != null ? Number(pick.REH) : null,  // 습도
+      base: `${base_date} ${base_time}`,
+    };
+    return weather;
+  } catch (e) {
+    console.error("[fetchWeather] KMA error:", e);
+    return null;
+  }
 }
 
 /* ---------- 라우트 ---------- */
 function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dataError }) {
-  const { isLoading } = useAuth();
+ const { isLoading } = useAuth();
   const url = { jsp: "http://localhost:8081", react: "http://localhost:5173" };
 
   if (isLoading) return <div style={{ textAlign: "center", padding: "50px" }}>로딩 중...</div>;
@@ -190,7 +292,7 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
               flightDateLabel={scheduleDateLabel}
               /* 날씨 카드 상단 도시 라벨 */
               placeLabel="서울(김포공항)"
-              /* 날씨 포맷 콜백 (이미 사용 중인 포맷 함수가 있으면 그대로) */
+              /* 날씨 포맷 콜백 */
               fmtBase={(d, t) => (d && t ? `${d} ${t}` : "--")}
               degToDirText={(deg) => {
                 if (deg == null) return "-";
@@ -269,8 +371,7 @@ function App() {
       setDataError(null);
 
       try {
-        /* 운항정보: 당일부터 과거 14일 까지 거슬러 올라가며
-           제일 먼저 데이터가 나오는 날짜의 결과를 채택 */
+        // 운항정보: 최근 날짜부터 과거로 탐색해서 처음 데이터 있는 날 채택
         let best = [];
         let bestLabel = "";
 
@@ -281,18 +382,18 @@ function App() {
           const list = await fetchFlightsForDate(d);
 
           if (list.length > 0) {
-            best = list.slice(0, 10); // 너무 많으면 10개만
-            bestLabel = fmtLabelDate(d); // 카드 제목 옆에 표시
+            best = list.slice(0, 10);
+            bestLabel = fmtLabelDate(d);
             break;
           }
         }
 
         if (mounted) {
           setScheduleItems(best);
-          setScheduleDateLabel(bestLabel); // 없으면 빈 문자열
+          setScheduleDateLabel(bestLabel);
         }
 
-        // 날씨(있으면 사용)
+        // 기상청 단기예보
         const wx = await fetchWeather();
         if (mounted) setWeather(wx ?? null);
       } catch (e) {

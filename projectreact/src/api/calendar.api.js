@@ -13,7 +13,7 @@ const toYMD = (d) => {
 // 일정 불러오기 (쿼리 파라미터 start, end: 'YYYY-MM-DD')
 export const getEvents = async (start, end) => {
   try {
-    const res = await api.get("/api/calendars", {
+    const res = await api.get("/calendars", {
       params: { start, end }, // 필요시 toYMD(start), toYMD(end)
     });
     return res.data;
@@ -31,7 +31,7 @@ export const getEvents = async (start, end) => {
 // ★ NEW: "내 일정만" 불러오기 (mine=true + X-Employee-Id 헤더)
 export const getMyEvents = async (start, end, me, includeShift = false) => {
   try {
-    const res = await api.get("/api/calendars", {
+    const res = await api.get("/calendars", {
       params: {
         start: typeof start === "string" ? start : toYMD(start),
         end: typeof end === "string" ? end : toYMD(end),
@@ -63,7 +63,7 @@ export const createEvent = async (eventData) => {
       endDate: eventData.endDate ?? null,
       category: eventData.category,
     };
-    const res = await api.post("/api/calendars/events", body);
+    const res = await api.post("/calendars/events", body);
     return res.data;
   } catch (error) {
     console.error("일정 생성 실패", error);
@@ -82,7 +82,7 @@ export const updateEvent = async (id, eventData) => {
       endDate: eventData.endDate ?? null,
       category: eventData.category ?? null,
     };
-    const res = await api.put(`/api/calendars/events/${id}`, body);
+    const res = await api.put(`/calendars/events/${id}`, body);
     return res.data;
   } catch (error) {
     console.error("일정 수정 실패", error);
@@ -94,7 +94,7 @@ export const updateEvent = async (id, eventData) => {
 // 일정 삭제
 export const deleteEvent = async (id) => {
   try {
-    const res = await api.delete(`/api/calendars/events/${id}`);
+    const res = await api.delete(`/calendars/events/${id}`);
     return res.data;
   } catch (error) {
     console.error("일정 삭제 실패", error);
