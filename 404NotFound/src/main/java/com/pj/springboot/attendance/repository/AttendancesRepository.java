@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +21,9 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 
 	@EntityGraph(attributePaths = { "attendanceEmployeeId", "attendanceEditEmployeeId" })
 	Page<Attendances> findByAttendanceDate(LocalDate date, Pageable pageable);
+	
+	@EntityGraph(attributePaths = { "attendanceEmployeeId" })
+	List<Attendances> findByAttendanceDate(LocalDate today);
 
 	long countByAttendanceDate(LocalDate date);
 
@@ -106,4 +108,5 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 			+ " WHERE e.employeeId = :employeeId AND a.attendanceDate BETWEEN :start AND :end " + " GROUP BY e.employeeId, e.name ")
 	Page<AttendanceStatDTO> getStatsByAttendanceEmployeeId_EmployeeId(LocalDate start, LocalDate end, int employeeId,
 			Pageable pageable);
+
 }

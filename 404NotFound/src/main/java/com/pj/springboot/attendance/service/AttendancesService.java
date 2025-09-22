@@ -149,11 +149,17 @@ public class AttendancesService {
 
 	@Scheduled(cron = "0 30 9 * * ?")
 	public int insertTodayAttendances() {
-		// 직원만큼 오늘 근태 row추가
+		// 추가되어있는 직원을 제외한 직원 근태 정보 추가
 		LocalDate today = LocalDate.now();
+		List<Attendances> exist = attendancesRepository.findByAttendanceDate(today);
+		List<Integer> existId = new ArrayList<>();
+		for (Attendances attendance : exist) {
+			existId.add(attendance.getAttendanceEmployeeId().getEmployeeId());
+		}
 		List<EmployeeEntity> entityList = employeeRepository.findAll();
 		List<Attendances> saveList = new ArrayList<>();
 		for (EmployeeEntity employee : entityList) {
+			if(existId.contains(employee.getEmployeeId())) continue;
 			Attendances entity = new Attendances();
 			entity.setAttendanceDate(today);
 			entity.setAttendanceEmployeeId(employee);
@@ -220,10 +226,13 @@ public class AttendancesService {
 				Sort.by(Sort.Direction.ASC, "attendanceEmployeeId.employeeId"));
 		switch (searchField) {
 		case "employeeName":
-			return attendancesRepository.getStatsByAttendanceEmployeeId_NameLike(start, end, "%" + searchWord + "%", pageable).getContent();
+			return attendancesRepository
+					.getStatsByAttendanceEmployeeId_NameLike(start, end, "%" + searchWord + "%", pageable).getContent();
 		case "employeeId":
 			try {
-				return attendancesRepository.getStatsByAttendanceEmployeeId_EmployeeId(start, end, Integer.parseInt(searchWord), pageable).getContent();
+				return attendancesRepository
+						.getStatsByAttendanceEmployeeId_EmployeeId(start, end, Integer.parseInt(searchWord), pageable)
+						.getContent();
 			} catch (Exception e) {
 				return null;
 			}

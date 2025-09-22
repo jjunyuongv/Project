@@ -24,7 +24,6 @@ function AttendanceList(props) {
   const searchDate = date === undefined ? "" : date;
 
   // 로그인 관련
-  // 로그인 관련
   const { isLoggedIn, user } = useAuth();
   let isManager = false;
   if (isLoggedIn) {
@@ -103,10 +102,6 @@ function AttendanceList(props) {
             setEmpState(2);
             break;
         }
-      } else {
-        alert("금일 근태 정보가 등록되지 않았습니다.");
-        insertToday();
-        getData();
       }
     }
     setCount(countResp.data);
@@ -146,21 +141,23 @@ function AttendanceList(props) {
 
   // 오늘 근태 ROW추가 자동으로 9:20분에 추가되도록 했지만 서버를 계속 켜놔야하기때문에
   // 데이터가 없을 때 추가하도록 함
+  // 모든 직원 등록하려면 이걸로
   const insertToday = async () => {
     let response = [];
     let dataUrl = props.baseUrl + "/api/attendances";
     response = await axios.post(dataUrl);
     if (response.data === 1) {
-      alert("오늘 등록 성공");
-    } else {
-      alert("오류가 났거나 이미 등록됨");
+      getData();
+    } else{
+      getData();
+      alert("오류 발생");
     }
   }
 
   useEffect(function () {
     // 로그인 안되어있을 때는 데이터를 불러오지 않음
     if (isLoggedIn) {
-      getData();
+      insertToday();
     }
   }, []);
 
