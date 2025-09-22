@@ -35,10 +35,8 @@ async function apiFetch(input, init = {}) {
   });
 
   if (!res.ok) {
-    // 간결한 오류 메시지(과도한 예외정보 제거)
     throw new Error(`${res.status} ${res.statusText}`.trim());
   }
-  // JSON 응답만 시도(없으면 null)
   try { return await res.json(); } catch { return null; }
 }
 
@@ -171,10 +169,17 @@ function ApprovalView() {
   const canDecideUI = isManager && canDecide;
   const canDeleteUI = isManager && canDelete;
 
-  // 🔒 작성자 여부 (수정 버튼 클릭 시 검사)
+  // 🔒 작성자 여부
   const isOwner = useMemo(() =>
     !!doc && !!myEmpId && String(doc.approvalAuthor) === String(myEmpId)
   , [doc, myEmpId]);
+
+  // ★ NEW: 수정 가능 여부(작성자 && PENDING 상태만)
+  const isPending = useMemo(() =>
+    String(doc?.approvalStatus || "").toUpperCase() === "PENDING"
+  , [doc]); // ★ NEW
+
+  const canEdit = isOwner && isPending; // ★ NEW
 
   // 승인/반려
   const decide = async (action, reason) => {
@@ -229,7 +234,7 @@ function ApprovalView() {
     }
   };
 
-  // ✅ 수정 버튼 클릭 시: 작성자만 이동, 아니면 경고
+  // ✅ 수정 버튼 클릭 시: 작성자 + PENDING 상태만 허용
   const handleEditClick = (e) => {
     e.preventDefault();
     if (!docId) return;
@@ -237,10 +242,14 @@ function ApprovalView() {
       alert("글쓴이가 아닙니다.");
       return;
     }
+    if (!isPending) {                          // ★ NEW
+      alert("승인/반려된 문서는 수정할 수 없습니다."); // ★ NEW
+      return;                                  // ★ NEW
+    }
     navigate(`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`);
   };
 
-  const infoDoc = statusBadgeInfo(doc?.approvalStatus); // ★ 사용하도록 아래 JSX도 함께 수정
+  const infoDoc = statusBadgeInfo(doc?.approvalStatus);
 
   return (
     <div className="boardpage">
@@ -262,8 +271,14 @@ function ApprovalView() {
             <i className="bi bi-list me-1" /> 목록
           </Link>
 
-          {/* 🔒 버튼은 항상 보이되, 클릭 시 작성자 검사 */}
-          <button type="button" className="btn btn-primary" onClick={handleEditClick}>
+          {/* 🔒 버튼은 항상 보이되, 승인/반려시 비활성화 */}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleEditClick}
+            disabled={!canEdit}                                         // ★ NEW
+            title={!canEdit ? "승인/반려된 문서는 수정할 수 없습니다." : undefined} // ★ NEW
+          >
             <i className="bi bi-pencil-square me-1" /> 수정
           </button>
 
@@ -355,7 +370,6 @@ function ApprovalView() {
                         <th className="bg-light" style={{ width: 160 }}>문서번호</th>
                         <td>{doc.approvalDocId}</td>
                         <th className="bg-light" style={{ width: 160 }}>상태</th>
-                        {/* ★ 변경: 여기서 infoDoc 사용 */}
                         <td><span className={infoDoc.cls}>{infoDoc.label}</span></td>
                       </tr>
                       <tr>

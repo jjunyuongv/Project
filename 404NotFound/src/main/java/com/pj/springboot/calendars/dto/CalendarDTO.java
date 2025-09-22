@@ -1,4 +1,4 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;

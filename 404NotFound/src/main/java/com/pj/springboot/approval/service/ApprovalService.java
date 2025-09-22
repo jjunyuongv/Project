@@ -14,7 +14,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile; // ★ NEW
+import org.springframework.web.multipart.MultipartFile; // ★ NEW (기존 주석 유지)
 
 import com.pj.springboot.approval.ApprovalDoc;
 import com.pj.springboot.approval.ApprovalLine;
@@ -30,6 +30,8 @@ import com.pj.springboot.approval.repository.TimeoffRequestRepository;
 
 // ✅ 역할(Role) 확인을 위해 사원 레포지토리 사용
 import com.pj.springboot.auth.repository.EmployeeRepository;
+import com.pj.springboot.calendars.service.EventSyncService;
+import com.pj.springboot.calendars.service.EventSyncService.ApprovalSnapshot;
 
 @Service
 @Transactional
@@ -46,6 +48,9 @@ public class ApprovalService {
     // NEW 배지 유지 시간
     private final Duration newBadgeDuration;
 
+    // ★ NEW: 캘린더 동기화 서비스 주입
+    private final EventSyncService eventSyncService;                           // ★ NEW
+
     /**
      * ✅ 더 이상 adminEmployeeId 주입 없음 (관리자 사번 정책 제거)
      */
@@ -54,13 +59,16 @@ public class ApprovalService {
                            TimeoffRequestRepository timeoffRepo,
                            FileUpload fileUpload,
                            EmployeeRepository employeeRepo,
-                           @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration) {
+                           @Value("${app.new-badge-duration:PT24H}") Duration newBadgeDuration,
+                           EventSyncService eventSyncService // ★ NEW
+    ) {
         this.docRepo = docRepo;
         this.lineRepo = lineRepo;
         this.timeoffRepo = timeoffRepo;
         this.fileUpload = fileUpload;
         this.employeeRepo = employeeRepo;
         this.newBadgeDuration = newBadgeDuration;
+        this.eventSyncService = eventSyncService;                              // ★ NEW
     }
 
     /* 목록 */
@@ -283,6 +291,22 @@ public class ApprovalService {
                     .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
             d.setApprovalStatus(ApprovalDoc.DocStatus.APPROVED);
             docRepo.save(d);
+
+            // ★ NEW: 최종 승인 완료 시 캘린더 업서트 (DB 스키마 변경 없이 EVENT 동기화)
+            eventSyncService.onApprovalStatusChanged(                            // ★ NEW
+                    new ApprovalSnapshot(                                        // ★ NEW
+                            d.getApprovalDocId(),                                // 문서ID
+                            d.getApprovalTitle(),                                // 제목
+                            d.getApprovalContent(),                              // 본문
+                            d.getApprovalCategory().name(),                      // "TIMEOFF" | "SHIFT" | "ETC"
+                            d.getApprovalStatus().name(),                        // "APPROVED"
+                            d.getApprovalAuthor(),                               // 신청자(= 일정 소유자)
+                            me,                                                  // 최종 승인자
+                            (d.getApprovalDate() != null                         // 기준일
+                                    ? d.getApprovalDate().toLocalDate()
+                                    : LocalDate.now())
+                    )
+            );
         }
     }
 
@@ -310,6 +334,22 @@ public class ApprovalService {
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다: " + docId));
         d.setApprovalStatus(ApprovalDoc.DocStatus.REJECTED);
         docRepo.save(d);
+
+        // ★ NEW: 반려 시 캘린더에서 해당 일정 제거
+        eventSyncService.onApprovalStatusChanged(                                // ★ NEW
+                new ApprovalSnapshot(
+                        d.getApprovalDocId(),
+                        d.getApprovalTitle(),
+                        d.getApprovalContent(),
+                        d.getApprovalCategory().name(),                          // "TIMEOFF" | "SHIFT" | "ETC"
+                        d.getApprovalStatus().name(),                            // "REJECTED"
+                        d.getApprovalAuthor(),
+                        me,
+                        (d.getApprovalDate() != null
+                                ? d.getApprovalDate().toLocalDate()
+                                : LocalDate.now())
+                )
+        );
     }
 
     /* 내 결재할 문서 (본인 차례) */
@@ -362,6 +402,9 @@ public class ApprovalService {
         if (d.getSfile() != null && !d.getSfile().isBlank()) {
             fileUpload.deleteQuietly(d.getSfile());
         }
+
+        // ★ NEW: 문서 삭제 시 관련 일정 전부 제거(토큰 기반)
+        eventSyncService.purgeDoc(docId, d.getApprovalAuthor());                 // ★ NEW
 
         docRepo.delete(d);
     }

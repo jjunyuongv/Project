@@ -1,8 +1,12 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.pj.springboot.calendars.Event;
+import com.pj.springboot.calendars.dto.CalendarDTO;
+import com.pj.springboot.calendars.repository.EventRepository;
 
 @Service
 @RequiredArgsConstructor

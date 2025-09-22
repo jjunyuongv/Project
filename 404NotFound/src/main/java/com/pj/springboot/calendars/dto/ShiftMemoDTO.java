@@ -1,4 +1,4 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.dto;
 
 import lombok.Data;
 import java.time.LocalDate;

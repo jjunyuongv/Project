@@ -1,8 +1,10 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.pj.springboot.calendars.ShiftMemo;
 
 import java.time.LocalDate;
 import java.util.List;

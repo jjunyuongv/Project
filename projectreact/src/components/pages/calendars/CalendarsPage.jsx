@@ -14,7 +14,11 @@ import {
   createEvent as apiCreateEvent,
   updateEvent as apiUpdateEvent,
   deleteEvent as apiDeleteEvent,
+  getMyEvents as apiGetMyEvents, // ★ NEW
 } from "../../../api/calendar.api.js";
+
+// ★ NEW: 로그인 컨텍스트에서 로그인 유저 정보 가져오기
+import { useAuth } from "../LoginForm/AuthContext.jsx"; // ★ NEW
 
 import "./calendars.css";
 
@@ -35,6 +39,10 @@ export default function CalendarsPage() {
   const fcRef = useRef(null);
   const shiftCtrlRef = useRef(null);
 
+  // ★ NEW: AuthContext에서 me(user) 꺼내고, employeeId를 안전하게 추출
+  const { user } = useAuth() || {};                                     // ★ NEW
+  const EMP_ID = user?.employeeId ?? CREW_EMPLOYEE_ID;                   // ★ NEW (로그인 없으면 기존 상수로 대체)
+
   const [calendarType, setCalendarType] = useState("일반"); // '일반' | '교대'
   const [viewType, setViewType] = useState("dayGridMonth");
   const [events, setEvents] = useState([]);
@@ -42,6 +50,10 @@ export default function CalendarsPage() {
   const [loading, setLoading] = useState(false);
   const [titleYM, setTitleYM] = useState("");
   const [shiftTitle, setShiftTitle] = useState("");
+
+  // ★ NEW: "내 일정만" 토글 및 교대 포함 옵션
+  const [showMine, setShowMine] = useState(false);      // 기본값 false로 기존 동작 보존
+  const [includeShift, setIncludeShift] = useState(false); // mine일 때 교대 포함 여부
 
   // 현재 조회 범위 (재조회용)
   const [rangeStart, setRangeStart] = useState(null);
@@ -70,7 +82,10 @@ export default function CalendarsPage() {
 
     setLoading(true);
     try {
-      const data = await apiGetEvents(toYMD(start), toYMD(endEx));
+      // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
+      const data = showMine
+        ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID, includeShift) // ★ CHG
+        : await apiGetEvents(toYMD(start), toYMD(endEx));
       setEvents(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error("일정 로딩 에러:", e);
@@ -126,7 +141,10 @@ export default function CalendarsPage() {
       (async () => {
         setLoading(true);
         try {
-          const data = await apiGetEvents(toYMD(start), toYMD(endEx));
+          // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
+          const data = showMine
+            ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID, includeShift) // ★ CHG
+            : await apiGetEvents(toYMD(start), toYMD(endEx));
           setEvents(Array.isArray(data) ? data : []);
         } catch (e) {
           console.error(e);
@@ -135,7 +153,26 @@ export default function CalendarsPage() {
         }
       })();
     }
-  }, [calendarType]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarType]);
+
+  // ★ NEW: mine / includeShift 토글 변경 시 현재 범위 재조회
+  useEffect(() => {
+    if (!isGeneral || !rangeStart || !rangeEnd) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = showMine
+          ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID, includeShift) // ★ CHG
+          : await apiGetEvents(toYMD(rangeStart), toYMD(rangeEnd));
+        setEvents(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [showMine, includeShift]); // ★ NEW
 
   /* ===== 날짜/이벤트 클릭 → 상세 or 새 일정 ===== */
   const openDetailOrCreate = (dateObj) => {
@@ -157,7 +194,10 @@ export default function CalendarsPage() {
     if (!rangeStart || !rangeEnd) return;
     setLoading(true);
     try {
-      const data = await apiGetEvents(toYMD(rangeStart), toYMD(rangeEnd));
+      // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
+      const data = showMine
+        ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID, includeShift) // ★ CHG
+        : await apiGetEvents(toYMD(rangeStart), toYMD(rangeEnd));
       setEvents(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -183,7 +223,7 @@ export default function CalendarsPage() {
         }
       } else {
         await apiCreateEvent({
-          crewEmployeeId: CREW_EMPLOYEE_ID,
+          crewEmployeeId: EMP_ID, // ★ CHG: 로그인 사용자 ID 사용
           title: data.title,
           content: data.content,
           startDate: data.startDate ?? selectedDate,
@@ -247,9 +287,30 @@ export default function CalendarsPage() {
             <h3 className="card-title">필터</h3>
           </div>
           <div className="card-body">
+            {/* ★ NEW: 내 일정만 / 교대 포함 토글 */}
+            <div className="filter-row" style={{ marginBottom: 12 }}>
+              <label className="check-row" style={{ marginRight: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={showMine}
+                  onChange={(e) => setShowMine(e.target.checked)}
+                />
+                <span>내 일정만 보기</span>
+              </label>
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={includeShift}
+                  onChange={(e) => setIncludeShift(e.target.checked)}
+                  disabled={!showMine}
+                />
+                <span>교대 포함</span>
+              </label>
+            </div>
+
             <ul className="filter-list">
               {CATEGORY_LIST.map((full) => (
-                <li key={full}>
+                <li key={full} >
                   <label className="check-row">
                     <input
                       type="checkbox"

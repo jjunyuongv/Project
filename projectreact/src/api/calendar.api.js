@@ -28,6 +28,30 @@ export const getEvents = async (start, end) => {
   }
 };
 
+// ★ NEW: "내 일정만" 불러오기 (mine=true + X-Employee-Id 헤더)
+export const getMyEvents = async (start, end, me, includeShift = false) => {
+  try {
+    const res = await api.get("/api/calendars", {
+      params: {
+        start: typeof start === "string" ? start : toYMD(start),
+        end: typeof end === "string" ? end : toYMD(end),
+        mine: true,
+        includeShift,
+      },
+      headers: { "X-Employee-Id": me?.id ?? me }, // me가 숫자 또는 {id}
+    });
+    return res.data;
+  } catch (error) {
+    console.error("내 일정 불러오기 실패", error);
+    const msg =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "서버 오류";
+    throw new Error(msg);
+  }
+};
+
 // 일정 생성 (CalendarDTO.CreateEventRequest)
 export const createEvent = async (eventData) => {
   try {

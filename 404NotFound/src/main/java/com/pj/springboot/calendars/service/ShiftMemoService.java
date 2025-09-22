@@ -1,10 +1,13 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.pj.springboot.calendars.ShiftMemo;
+import com.pj.springboot.calendars.repository.ShiftMemoRepository;
 
 import java.time.LocalDate;
 import java.util.List;

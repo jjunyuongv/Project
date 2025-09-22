@@ -1,6 +1,9 @@
-package com.pj.springboot.calendars;
+package com.pj.springboot.calendars.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.pj.springboot.calendars.CalendarShift;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
