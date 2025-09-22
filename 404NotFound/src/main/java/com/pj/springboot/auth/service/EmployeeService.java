@@ -95,6 +95,16 @@ public class EmployeeService {
                 .orElseThrow(() -> new RuntimeException("일치하는 사용자 정보가 없습니다."));
         return employee.getLoginId();
     }
+    
+    @Transactional(readOnly = true)
+    public EmployeeEntity findByEmail(String email) {
+        return repository.findByEmail(email).orElse(null);
+    }
+
+    @Transactional
+    public EmployeeEntity save(EmployeeEntity user) {
+        return repository.save(user);
+    }
 
     @Transactional
     public void resetPassword(ResetPasswordRequestDTO request) {
@@ -126,6 +136,34 @@ public class EmployeeService {
 
     public boolean passwordMatches(String rawPassword, String encodedPassword) {
         return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+    
+    // =======================
+    // 카카오 로그인용 추가
+    // =======================
+
+    @Transactional(readOnly = true)
+    public EmployeeEntity findByKakaoId(String kakaoId) {
+        return repository.findByKakaoId(kakaoId).orElse(null);
+    }
+
+    @Transactional
+    public EmployeeEntity saveKakaoUser(EmployeeEntity user) {
+        EmployeeEntity existing = findByKakaoId(user.getKakaoId());
+        if (existing != null) return existing; // 이미 존재하면 반환
+        return repository.save(user);
+    }
+    
+    @Transactional(readOnly = true)
+    public EmployeeEntity findByGoogleId(String googleId) {
+        return repository.findByGoogleId(googleId).orElse(null);
+    }
+
+    @Transactional
+    public EmployeeEntity saveGoogleUser(EmployeeEntity user) {
+        EmployeeEntity existing = findByGoogleId(user.getGoogleId());
+        if (existing != null) return existing; // 이미 존재하면 반환
+        return repository.save(user);
     }
 
     // 현준 추가

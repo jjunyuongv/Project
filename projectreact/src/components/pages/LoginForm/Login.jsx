@@ -1,14 +1,14 @@
 // @ts-nocheck
-import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom"; // useLocation 추가
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from './AuthContext';
 import './login.css';
 
 function Login() {
-  const { login } = useAuth();
+  const { login, loginError, setLoginError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/"; // ProtectedRoute에서 전달된 경로
+  const from = location.state?.from?.pathname || "/";
 
   const [formData, setFormData] = useState({ loginId: "", password: "" });
   const [errors, setErrors] = useState({});
@@ -34,10 +34,14 @@ function Login() {
 
     try {
       const loggedInUser = await login(formData);
-      setMessage(`환영합니다, ${loggedInUser.name}님!`);
+      setMessage(`환영합니다, ${loggedInUser.name}님!`); // employeeName → name
       setShowModal(true);
     } catch (error) {
-      setMessage(error.message || "로그인 실패");
+      if (error.response && error.response.data) {
+        setMessage(error.response.data);
+      } else {
+        setMessage("로그인 실패: 알 수 없는 오류");
+      }
       setShowModal(true);
     }
   };
@@ -45,13 +49,82 @@ function Login() {
   const closeModal = () => {
     setShowModal(false);
     if (message.startsWith('환영합니다')) {
-      navigate(from, { replace: true }); // ProtectedRoute에서 넘어온 경로로 이동
+      navigate(from, { replace: true });
     }
   };
 
-  /** Google / Kakao OAuth (더미) */
-  const handleGoogleLogin = () => {};
-  const handleKakaoLogin = () => {};
+  const handleKakaoLogin = () => {
+    const JS_KEY = "eb030c320f22b162356f3e23377e325d"; 
+    const REDIRECT_URI = "http://localhost:5173/kakao-redirect"; // 프론트 React 라우트
+    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${JS_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      KAKAO_AUTH_URL,
+      "KakaoLogin",
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+
+    // 팝업 메시지 수신
+    const listener = (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === "kakao-login") {
+        if (event.data.error) {
+          setMessage(`카카오 로그인 실패: ${event.data.error}`);
+        } else if (event.data.user) {
+          const user = event.data.user;
+          console.log("Kakao user received:", user); // 디버깅용
+          setMessage(`환영합니다, ${user.name}님!`); // employeeName → name
+          setShowModal(true);
+        }
+        window.removeEventListener("message", listener);
+      }
+    };
+
+    window.addEventListener("message", listener);
+  };
+
+  const handleGoogleLogin = () => {
+    const CLIENT_ID = "671525201402-78tr6u9ukehovd5b5lb97j47u9o7j1vu.apps.googleusercontent.com"; // Google API Client ID
+    const REDIRECT_URI = "http://localhost:5173/google-redirect"; // 구글 리다이렉트 URI
+
+    const GOOGLE_AUTH_URL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=openid%20email%20profile`;
+
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      GOOGLE_AUTH_URL,
+      "GoogleLogin",
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+
+    // 팝업 메시지 수신
+    const listener = (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === "google-login") {
+        if (event.data.error) {
+          setMessage(`구글 로그인 실패: ${event.data.error}`);
+        } else if (event.data.user) {
+          const user = event.data.user;
+          console.log("Google user received:", user); // 디버깅용
+          setMessage(`환영합니다, ${user.name}님!`); // employeeName → name
+          setShowModal(true);
+        }
+        window.removeEventListener("message", listener);
+      }
+    };
+
+    window.addEventListener("message", listener);
+  };
 
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">

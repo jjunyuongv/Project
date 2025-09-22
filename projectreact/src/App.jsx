@@ -44,6 +44,8 @@ import MyFacilityReservationList from "./components/pages/Facilities/MyFacilityR
 // 근태
 import AttendanceList from "./components/pages/attendance/AttendanceList";
 import AttendanceStats from "./components/pages/attendance/AttendanceStats";
+import KakaoRedirect from "./components/pages/LoginForm/KakaoRedirect";
+import GoogleRedirect from "./components/pages/LoginForm/GoogleRedirect";
 
 // 공공데이터 키
 const apiKey = import.meta.env.VITE_API_KEY;
@@ -205,6 +207,9 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
         <Route path="/FindId" element={<FindId />} />
         <Route path="/FindPassword" element={<FindPassword />} />
         <Route path="/MyPage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+        <Route path="/kakao-redirect" element={<KakaoRedirect />} />
+        <Route path="/google-redirect" element={<GoogleRedirect />} />
+
 
         {/* 캘린더 */}
         <Route path="/Calendars" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />

@@ -22,7 +22,7 @@ public class EmployeeEntity {
     @Column(name = "employee_name", nullable = false)
     private String name;
 
-    @Column(name = "employee_email", nullable = false, unique = true)
+    @Column(name = "employee_email", nullable = true, unique = true)
     private String email;
 
     @Column(name = "employee_pw", nullable = false)
@@ -49,4 +49,10 @@ public class EmployeeEntity {
     
     @Column(name = "employee_gender")
     private String gender;
+    
+    @Column(name = "employee_kakao_id", unique = true)
+    private String kakaoId; 
+    
+    @Column(name = "employee_google_id", unique = true)
+    private String googleId;
 }

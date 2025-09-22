@@ -2,14 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from './AuthContext';
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function MyPage() {
-    const { isLoggedIn } = useAuth();
+    const { isLoggedIn, user } = useAuth();
+    const navigate = useNavigate();
     const [employeeData, setEmployeeData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("info"); // info / edit / password
-
-
 
     // 내 정보 수정 상태
     const [editData, setEditData] = useState({
@@ -36,7 +36,6 @@ export default function MyPage() {
         }
     }, [activeTab]);
 
-
     const inputStyle = {
         padding: "8px 12px",
         borderRadius: "6px",
@@ -48,6 +47,23 @@ export default function MyPage() {
     useEffect(() => {
         if (!isLoggedIn) {
             setLoading(false);
+            return;
+        }
+
+        // user가 아직 준비되지 않았으면 기다림
+        if (!user) return;
+
+        // 카카오 소셜 로그인 접근 제한
+        if (user.loginId.startsWith("kakao_")) {
+            alert("소셜 계정은 마이페이지 접근이 제한됩니다.");
+            navigate(-1); // 이전 페이지로 돌아감
+            return;
+        }
+
+        // 구글 계정도 마찬가지로 제한
+        if (user.loginId.startsWith("google_")) {
+            alert("소셜 계정은 마이페이지 접근이 제한됩니다.");
+            navigate(-1); // 이전 페이지로 돌아감
             return;
         }
 
@@ -213,7 +229,6 @@ export default function MyPage() {
                                     <div style={{ padding: "8px 12px", border: "1px solid #e0e0e0", borderRadius: "6px", backgroundColor: "#fff" }}>
                                         {item.value}
                                     </div>
-
                                 </React.Fragment>
                             ))}
                         </div>
@@ -232,7 +247,6 @@ export default function MyPage() {
                                 <label>
                                     <input type="radio" name="gender" value="여자" checked={editData.gender === "여자"} onChange={handleChange} />여자
                                 </label>
-
                             </div>
 
                             <div style={{ fontWeight: 600, color: "#555", textAlign: "right" }}>부서:</div>
