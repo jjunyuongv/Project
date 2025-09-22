@@ -1,0 +1,67 @@
+/* 컨테이너 */
+.shift-pattern-calendar {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+/* 표 레이아웃 */
+.shift-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.shift-table th,
+.shift-table td {
+  border: 1px solid #e5e7eb;
+  padding: 4px;
+  height: 44px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* ▶ 헤더 날짜/요일 색: 여기 조정 */
+.header-day-number { font-weight: 800; color: #1f2937; } /* 날짜 숫자 색 */
+.header-day-label  { font-size: 11px; color: #64748b; }  /* 요일 텍스트 색 */
+
+/* ▶ 주말 헤더 배경/색 */
+.weekend {
+  background: #fff7ed;      /* 배경 */
+  color: #b45309;           /* 텍스트 색(필요시) */
+}
+
+/* 좌측 팀명 */
+.team-name {
+  font-weight: 700;
+  background: #f1f5f9;
+  width: 68px;
+}
+
+/* 셀 */
+.shift-cell { position: relative; cursor: pointer; }
+.shift-code { font-weight: 800; }
+
+/* ▶ 메모 표시 아이콘/배지: 여기서 색/모양 변경 */
+.shift-memo-badge {
+  content: "";
+  position: absolute;
+  left: 25px;          /* 위치 미세 조정 */
+  top: 1px;
+  width: 6px;         /* 체크 길이 */
+  height: 10px;       /* 체크 높이 */
+  border-right: 2px solid var(--memo-check-color, #ff3636); /* 색상 */
+  border-bottom: 2px solid var(--memo-check-color, #ff3232);
+  transform: rotate(45deg);
+  filter: drop-shadow(0 0 1px #fff); /* 배경 위 가독성(옵션) */
+}
+
+/* 근무 형태 배경 */
+.shift-오전 { background-color: #fef9c3; }
+.shift-오후 { background-color: #fde68a; }
+.shift-야간 { background-color: #e0e7ff; }
+.shift-휴무 { background-color: #f1f5f9; color: #475569; }
+
+/* 로딩 텍스트(선택) */
+.shift-loading { margin-bottom: 8px; color: #64748b; font-size: 12px; }

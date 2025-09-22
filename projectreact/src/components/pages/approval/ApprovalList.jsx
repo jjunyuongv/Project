@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom"; // ★ 정리: useNavi
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 
-/* === 공통 유틸(중복/과한 예외처리 축소) === */
+/* === 공통 유틸(간단 유지) === */
 class HttpError extends Error {
   constructor(status, statusText) {
     super(`${status} ${statusText}`.trim());
@@ -12,41 +12,72 @@ class HttpError extends Error {
     this.status = status;
   }
 }
-async function fetchOk(url, init) {
-  const res = await fetch(url, init);
+
+// ★ 변경: XSRF 쿠키 읽기 유틸 추가(서버가 CookieCsrfTokenRepository 쓸 때 필요)
+const getCookie = (name) =>
+  document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+
+async function fetchOk(url, init = {}) {
+  // ★ 변경: fetch에도 쿠키 동봉 + XSRF 헤더 자동 추가
+  const headers = new Headers(init.headers || { Accept: "application/json" });
+  const xsrf = getCookie("XSRF-TOKEN") || getCookie("X-XSRF-TOKEN");
+  if (xsrf && !headers.has("X-XSRF-TOKEN")) {
+    headers.set("X-XSRF-TOKEN", decodeURIComponent(xsrf));
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "include", // ★ 변경: 세션 쿠키(JSESSIONID) 포함
+  });
+
   if (!res.ok) throw new HttpError(res.status, res.statusText);
   return res;
 }
+
 async function fetchJson(url, init) {
   const res = await fetchOk(url, init);
-  try { return await res.json(); } catch { return null; }
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 const statusInfo = (s) => {
   switch (s) {
-    case "APPROVED": return { label: "승인", cls: "badge rounded-pill bg-success" };
-    case "REJECTED": return { label: "반려", cls: "badge rounded-pill bg-danger" };
-    case "PENDING":  return { label: "대기",  cls: "badge rounded-pill bg-warning text-dark" };
-    default:         return { label: s || "-", cls: "badge rounded-pill bg-secondary" };
+    case "APPROVED":
+      return { label: "승인", cls: "badge rounded-pill bg-success" };
+    case "REJECTED":
+      return { label: "반려", cls: "badge rounded-pill bg-danger" };
+    case "PENDING":
+      return { label: "대기", cls: "badge rounded-pill bg-warning text-dark" };
+    default:
+      return { label: s || "-", cls: "badge rounded-pill bg-secondary" };
   }
 };
 
 const statusLabel = (s) =>
-  s === "ALL" ? "전체 상태"
-  : s === "PENDING" ? "대기"
-  : s === "APPROVED" ? "승인"
-  : s === "REJECTED" ? "반려"
-  : s;
+  s === "ALL"
+    ? "전체 상태"
+    : s === "PENDING"
+    ? "대기"
+    : s === "APPROVED"
+    ? "승인"
+    : s === "REJECTED"
+    ? "반려"
+    : s;
 
 const categoryLabel = (c) =>
-  c === "TIMEOFF" ? "휴가/근무 변경"
-  : c === "SHIFT" ? "근무 교대"
-  : "기타";
+  c === "TIMEOFF" ? "휴가/근무 변경" : c === "SHIFT" ? "근무 교대" : "기타";
 
 const fmtDate = (s) => {
   if (!s) return "-";
   const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return (s.includes("T") ? s.split("T")[0] : s);
+  if (Number.isNaN(d.getTime())) return s.includes("T") ? s.split("T")[0] : s;
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
@@ -67,12 +98,16 @@ function ApprovalList() {
 
   const [rows, setRows] = useState([]);
   const [pageInfo, setPageInfo] = useState({
-    totalPages: 0, totalElements: 0, number: 0, first: true, last: true,
+    totalPages: 0,
+    totalElements: 0,
+    number: 0,
+    first: true,
+    last: true,
   });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
-  // URL 쿼리싱크
+  // URL 쿼리 싱크
   useEffect(() => {
     const next = new URLSearchParams();
     if (page > 0) next.set("page", String(page));
@@ -92,19 +127,23 @@ function ApprovalList() {
         params.set("page", String(page));
         params.set("size", String(SIZE));
         if (status && status !== "ALL") params.set("status", status);
+        if (q) params.set("q", q); // ★ 변경: 검색어(q)도 서버로 전달
 
-        const data = await fetchJson(`${API_BASE}/api/approvals?${params.toString()}`, {
-          headers: { Accept: "application/json" },
-          signal: ctrl.signal,
-        });
+        const data = await fetchJson(
+          `${API_BASE}/api/approvals?${params.toString()}`,
+          {
+            headers: { Accept: "application/json" },
+            signal: ctrl.signal,
+          }
+        );
 
         const {
           content = [],
           totalPages = 0,
           totalElements = 0,
           number = page,
-          first = (page === 0),
-          last = (number >= (totalPages - 1)),
+          first = page === 0,
+          last = number >= totalPages - 1,
         } = data || {};
 
         setRows(Array.isArray(content) ? content : []);
@@ -117,7 +156,7 @@ function ApprovalList() {
     }
     load();
     return () => ctrl.abort();
-  }, [page, status]);
+  }, [page, status, q]); // ★ 변경: q 바뀌면 재조회
 
   const goPrev = useCallback(() => {
     if (pageInfo.first) return;
@@ -133,7 +172,7 @@ function ApprovalList() {
     <div className="boardpage">
       <div className="hero">
         <div className="hero__overlay" />
-        <h1 className="hero__title">전가 결재</h1>
+        <h1 className="hero__title">전자 결재</h1>
       </div>
 
       <main className="container-xxl py-4 flex-grow-1">
@@ -141,13 +180,23 @@ function ApprovalList() {
         <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
           {/* 상태 필터 */}
           <div className="dropdown">
-            <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+            <button
+              className="btn btn-outline-secondary dropdown-toggle"
+              data-bs-toggle="dropdown"
+              type="button"
+            >
               {statusLabel(status)}
             </button>
             <ul className="dropdown-menu">
               {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
                 <li key={s}>
-                  <button className="dropdown-item" onClick={() => { setPage(0); setStatus(s); }}>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => {
+                      setPage(0);
+                      setStatus(s);
+                    }}
+                  >
                     {statusLabel(s)}
                   </button>
                 </li>
@@ -163,9 +212,15 @@ function ApprovalList() {
               placeholder="제목으로 검색"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") setPage(0); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setPage(0);
+              }}
             />
-            <button className="btn btn-outline-secondary" type="button" onClick={() => setPage(0)}>
+            <button
+              className="btn btn-outline-secondary"
+              type="button"
+              onClick={() => setPage(0)}
+            >
               <i className="bi bi-search" />
             </button>
           </div>
@@ -187,12 +242,22 @@ function ApprovalList() {
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th className="text-center" style={{ width: 90 }}>번호</th>
+                <th className="text-center" style={{ width: 90 }}>
+                  번호
+                </th>
                 <th>제목</th>
-                <th className="text-center" style={{ width: 160 }}>유형</th>
-                <th className="text-center" style={{ width: 140 }}>작성자</th>
-                <th className="text-center" style={{ width: 140 }}>작성일</th>
-                <th className="text-center" style={{ width: 120 }}>상태</th>
+                <th className="text-center" style={{ width: 160 }}>
+                  유형
+                </th>
+                <th className="text-center" style={{ width: 140 }}>
+                  작성자
+                </th>
+                <th className="text-center" style={{ width: 140 }}>
+                  작성일
+                </th>
+                <th className="text-center" style={{ width: 120 }}>
+                  상태
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -205,31 +270,44 @@ function ApprovalList() {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-5">데이터가 없습니다.</td>
+                  <td colSpan={6} className="text-center text-muted py-5">
+                    데이터가 없습니다.
+                  </td>
                 </tr>
               ) : (
                 rows.map((r, idx) => {
                   const info = statusInfo(r.approvalStatus);
                   const displayNo = page * SIZE + (idx + 1);
                   const qs = sp.toString();
-                  const to = `/ApprovalView/${encodeURIComponent(r.approvalDocId)}${qs ? `?${qs}` : ""}`;
+                  const to = `/ApprovalView/${encodeURIComponent(
+                    r.approvalDocId
+                  )}${qs ? `?${qs}` : ""}`;
 
                   return (
                     <tr key={r.approvalDocId}>
                       <td className="text-center">{displayNo}</td>
                       <td className="text-truncate" style={{ maxWidth: 900 }}>
-                        <Link to={to} className="link-primary fw-semibold align-middle">
+                        <Link
+                          to={to}
+                          className="link-primary fw-semibold align-middle"
+                        >
                           {r.approvalTitle || "(제목 없음)"}
                         </Link>
                         {/* NEW 배지 (노랑) */}
                         {r.isNew && (
-                          <span className="badge rounded-pill bg-warning text-dark ms-2 align-middle">N</span>
+                          <span className="badge rounded-pill bg-warning text-dark ms-2 align-middle">
+                            N
+                          </span>
                         )}
                       </td>
-                      <td className="text-center">{categoryLabel(r.approvalCategory)}</td>
+                      <td className="text-center">
+                        {categoryLabel(r.approvalCategory)}
+                      </td>
                       <td className="text-center">{r.approvalAuthor}</td>
                       <td className="text-center">{fmtDate(r.approvalDate)}</td>
-                      <td className="text-center"><span className={info.cls}>{info.label}</span></td>
+                      <td className="text-center">
+                        <span className={info.cls}>{info.label}</span>
+                      </td>
                     </tr>
                   );
                 })
@@ -239,13 +317,36 @@ function ApprovalList() {
         </div>
 
         {/* 페이지 네비 */}
-        <nav className="mt-3 d-flex justify-content-center align-items-center gap-2" aria-label="페이지네이션">
-          <button className="btn btn-light border" onClick={() => setPage(0)} disabled={pageInfo.first}>« 처음</button>
-          <button className="btn btn-light border" onClick={goPrev} disabled={pageInfo.first}>이전</button>
+        <nav
+          className="mt-3 d-flex justify-content-center align-items-center gap-2"
+          aria-label="페이지네이션"
+        >
+          <button
+            className="btn btn-light border"
+            onClick={() => setPage(0)}
+            disabled={pageInfo.first}
+          >
+            « 처음
+          </button>
+          <button
+            className="btn btn-light border"
+            onClick={goPrev}
+            disabled={pageInfo.first}
+          >
+            이전
+          </button>
           <span className="mx-2 small text-muted">
-            {pageInfo.totalPages > 0 ? `${page + 1} / ${pageInfo.totalPages}` : `0 / 0`}
+            {pageInfo.totalPages > 0
+              ? `${page + 1} / ${pageInfo.totalPages}`
+              : `0 / 0`}
           </span>
-          <button className="btn btn-light border" onClick={goNext} disabled={pageInfo.last || rows.length === 0}>다음</button>
+          <button
+            className="btn btn-light border"
+            onClick={goNext}
+            disabled={pageInfo.last || rows.length === 0}
+          >
+            다음
+          </button>
           <button
             className="btn btn-light border"
             onClick={() => setPage(Math.max(0, pageInfo.totalPages - 1))}

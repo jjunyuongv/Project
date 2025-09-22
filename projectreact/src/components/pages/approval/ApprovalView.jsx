@@ -1,11 +1,11 @@
-// src/pages/ApprovalView.jsx
+// src/components/pages/approval/ApprovalView.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
 const DEV_EMP_ID = import.meta?.env?.VITE_DEV_EMP_ID || null;
 
-// 프로젝트 구조에 맞춰 경로 확인: { useAuth }가 맞는지(네임드) / default 인지 꼭 확인!
+// 프로젝트 구조에 맞춰 경로 확인
 import { useAuth } from "../LoginForm/AuthContext";
 
 /* 공통 유틸 */
@@ -13,13 +13,32 @@ const safeParse = (raw) => {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 };
 
-async function apiFetch(input, init) {
-  const res = await fetch(input, init);
+// ★ 변경: XSRF 토큰을 쿠키에서 읽어와서 모든 fetch에 쿠키 동봉 + 헤더 주입
+const getCookie = (name) =>
+  document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+
+async function apiFetch(input, init = {}) {
+  // ★ 변경: 기본 Accept 지정 + XSRF 헤더 추가
+  const headers = new Headers(init.headers || { Accept: "application/json" });
+  const xsrf = getCookie("XSRF-TOKEN") || getCookie("X-XSRF-TOKEN");
+  if (xsrf && !headers.has("X-XSRF-TOKEN")) {
+    headers.set("X-XSRF-TOKEN", decodeURIComponent(xsrf));
+  }
+
+  const res = await fetch(input, {
+    ...init,
+    headers,
+    credentials: "include", // ★ 변경: JSESSIONID 등 쿠키 포함
+  });
+
   if (!res.ok) {
-    // 간결한 오류 메시지(과한 예외 정보 제거)
+    // 간결한 오류 메시지(과도한 예외정보 제거)
     throw new Error(`${res.status} ${res.statusText}`.trim());
   }
-  // JSON 응답만 시도 (상세/결과 API는 모두 JSON)
+  // JSON 응답만 시도(없으면 null)
   try { return await res.json(); } catch { return null; }
 }
 
@@ -121,7 +140,6 @@ function ApprovalView() {
         );
         setDoc(data);
       } catch (e) {
-        // AbortError는 조용히 무시
         if (e?.name !== "AbortError") setErr(String(e?.message || e));
       } finally {
         setLoading(false);
@@ -222,7 +240,7 @@ function ApprovalView() {
     navigate(`/ApprovalEdit?docId=${encodeURIComponent(docId || "")}`);
   };
 
-  const infoDoc = statusBadgeInfo(doc?.approvalStatus);
+  const infoDoc = statusBadgeInfo(doc?.approvalStatus); // ★ 사용하도록 아래 JSX도 함께 수정
 
   return (
     <div className="boardpage">
@@ -337,6 +355,7 @@ function ApprovalView() {
                         <th className="bg-light" style={{ width: 160 }}>문서번호</th>
                         <td>{doc.approvalDocId}</td>
                         <th className="bg-light" style={{ width: 160 }}>상태</th>
+                        {/* ★ 변경: 여기서 infoDoc 사용 */}
                         <td><span className={infoDoc.cls}>{infoDoc.label}</span></td>
                       </tr>
                       <tr>
@@ -372,7 +391,11 @@ function ApprovalView() {
             {/* 내용 */}
             <div className="card shadow-sm mb-3">
               <div className="card-header bg-white"><strong>내용</strong></div>
-              <div className="card-body"><div style={{ whiteSpace:"pre-wrap", wordBreak:"break-word", minHeight:180 }}>{doc.approvalContent || "-"}</div></div>
+              <div className="card-body">
+                <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 180 }}>
+                  {doc.approvalContent || "-"}
+                </div>
+              </div>
             </div>
 
             {/* 결재 이력 */}

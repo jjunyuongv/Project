@@ -13,7 +13,7 @@
 .hero {
   position: relative;
   height: 220px;
-  background-image: url("public/Generated.png");
+  background-image: url("/Generated.png");
   background-size: cover;
   background-position: center;
   display: grid;

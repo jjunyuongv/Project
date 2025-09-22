@@ -1,0 +1,87 @@
+/* projectreact/src/components/pages/calendars/eventModal.css */
+
+/* 화면 전체 딤드 */
+.event-backdrop {
+  position: fixed;
+  inset: 0; /* top/right/bottom/left:0 */
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* 캘린더보다 위 */
+}
+
+/* 모달 박스 */
+.event-modal {
+  position: relative; /* backdrop 안에서 중앙정렬됨 */
+  width: 560px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  border: 1px solid #eef1f5;
+}
+
+/* 헤더 */
+.event-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+}
+.x-btn {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* 본문 폼 */
+.modal-body { display: flex; flex-direction: column; gap: 12px; }
+.form-group { display: flex; align-items: center; gap: 12px; }
+.form-group label { flex: 0 0 72px; font-weight: 700; color: #374151; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  flex: 1 1 auto;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* 푸터 버튼 */
+.event-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+.event-modal-footer .save {
+  background-color: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.event-modal-footer .cancel {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #111827;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}

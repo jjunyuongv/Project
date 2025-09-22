@@ -26,14 +26,39 @@ class HttpError extends Error {
     this.status = status;
   }
 }
-async function fetchOk(url, init) {
-  const res = await fetch(url, init);
+
+// ★ 변경: XSRF 토큰을 쿠키에서 읽고, 모든 fetch에 쿠키 동봉
+const getCookie = (name) =>
+  document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+
+async function fetchOk(url, init = {}) {
+  // ★ 변경: 기본 Accept, XSRF 헤더 주입
+  const headers = new Headers(init.headers || { Accept: "application/json" });
+  const xsrf = getCookie("XSRF-TOKEN") || getCookie("X-XSRF-TOKEN");
+  if (xsrf && !headers.has("X-XSRF-TOKEN")) {
+    headers.set("X-XSRF-TOKEN", decodeURIComponent(xsrf));
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "include", // ★ 변경: JSESSIONID 등 쿠키 동봉
+  });
+
   if (!res.ok) throw new HttpError(res.status, res.statusText);
   return res;
 }
+
 async function fetchJson(url, init) {
   const res = await fetchOk(url, init);
-  try { return await res.json(); } catch { return null; }
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 function ApprovalEdit() {
@@ -44,10 +69,7 @@ function ApprovalEdit() {
   const params = useParams();
   const [searchParams] = useSearchParams();
   const docId =
-    params.docId ||
-    searchParams.get("docId") ||
-    searchParams.get("no") ||
-    "";
+    params.docId || searchParams.get("docId") || searchParams.get("no") || "";
 
   // 로그인 사번 표시(수정 불가)
   const [employeeId, setEmployeeId] = useState("");
@@ -73,7 +95,7 @@ function ApprovalEdit() {
     timeoffReason: "",
   });
 
-  const [existingFileName, setExistingFileName] = useState(""); // ★ NEW: 기존 첨부 표시용
+  const [existingFileName, setExistingFileName] = useState("");
   const category = useMemo(() => TYPE_MAP[form.type] || "ETC", [form.type]);
   const isTimeoff = category === "TIMEOFF";
 
@@ -101,15 +123,15 @@ function ApprovalEdit() {
           { method: "GET", headers: { Accept: "application/json" }, signal: ctrl.signal }
         );
 
-        // 카테고리 → UI 라벨
         const uiType = TYPE_MAP_REV[data?.approvalCategory] || "기타";
 
-        // TIMEOFF 데이터 방어적으로 파싱 (timeoff 객체 또는 낱개 필드 모두 지원)
+        // TIMEOFF 데이터 방어적 파싱
         const to = data?.timeoff || {};
-        const timeoffType  = to.timeoffType || to.type || data?.timeoffType || "ANNUAL";
+        const timeoffType =
+          to.timeoffType || to.type || data?.timeoffType || "ANNUAL";
         const timeoffStart = to.start || data?.timeoffStart || "";
-        const timeoffEnd   = to.end || data?.timeoffEnd || "";
-        const timeoffReason= to.reason || data?.timeoffReason || "";
+        const timeoffEnd = to.end || data?.timeoffEnd || "";
+        const timeoffReason = to.reason || data?.timeoffReason || "";
 
         setForm({
           title: data?.approvalTitle ?? "",
@@ -122,7 +144,7 @@ function ApprovalEdit() {
           timeoffReason,
         });
 
-        setExistingFileName(data?.ofile || ""); // ★ NEW: 기존 첨부 파일명 표시
+        setExistingFileName(data?.ofile || "");
       } catch (e) {
         if (e?.name !== "AbortError") setErr(e?.message || String(e));
       } finally {
@@ -137,36 +159,46 @@ function ApprovalEdit() {
     if (!form.content.trim()) return "내용을 입력하세요.";
     if (!docId) return "문서 ID가 없습니다.";
     if (isTimeoff) {
-      if (!form.timeoffStart || !form.timeoffEnd) return "휴가 시작/종료일을 입력하세요.";
-      if (form.timeoffEnd < form.timeoffStart) return "휴가 종료일이 시작일보다 빠를 수 없습니다.";
+      if (!form.timeoffStart || !form.timeoffEnd)
+        return "휴가 시작/종료일을 입력하세요.";
+      if (form.timeoffEnd < form.timeoffStart)
+        return "휴가 종료일이 시작일보다 빠를 수 없습니다.";
     }
     return null;
   };
 
-  // PUT 우선 → 405면 PATCH 재시도 (기존 유지)
+  // PUT 우선 → 405면 PATCH 재시도 (기존 로직 유지)
   const updateDoc = async (payload, headers) => {
     const url = `${API_BASE}/api/approvals/${encodeURIComponent(docId)}`;
     try {
-      return await fetchOk(url, { method: "PUT", headers, body: JSON.stringify(payload) });
+      return await fetchOk(url, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(payload),
+      });
     } catch (e) {
       if (e instanceof HttpError && e.status === 405) {
-        return await fetchOk(url, { method: "PATCH", headers, body: JSON.stringify(payload) });
+        return await fetchOk(url, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        });
       }
       throw e;
     }
   };
 
   /* =========================
-     ★ NEW: 파일 교체 업로드
+     파일 교체 업로드
      - 백엔드: POST /api/approvals/{docId}/file (키: "file")
      - 한 문서당 단일 파일 구조 → 첫 번째 선택 파일만 사용
      ========================= */
   const uploadNewFileIfAny = async () => {
     if (!form.files?.length) return;
     const fd = new FormData();
-    fd.append("file", form.files[0]); // 첫 번째 파일만 사용
+    fd.append("file", form.files[0]);
 
-    const headers = { Accept: "application/json" };
+    const headers = { Accept: "application/json" }; // Content-Type 자동처리(FormData)
     if (employeeId && /^\d+$/.test(employeeId)) {
       headers["X-Employee-Id"] = String(Number(employeeId));
     }
@@ -177,7 +209,10 @@ function ApprovalEdit() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
-    if (v) { setErr(v); return; }
+    if (v) {
+      setErr(v);
+      return;
+    }
 
     const payload = {
       title: form.title.trim(),
@@ -197,7 +232,10 @@ function ApprovalEdit() {
       setSaving(true);
       setErr(null);
 
-      const headers = { "Content-Type": "application/json", Accept: "application/json" };
+      const headers = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
       if (employeeId && /^\d+$/.test(employeeId)) {
         headers["X-Employee-Id"] = String(Number(employeeId));
       }
@@ -206,7 +244,7 @@ function ApprovalEdit() {
       await updateDoc(payload, headers);
 
       // 2) 새 파일 있으면 교체 업로드 (multipart)
-      await uploadNewFileIfAny(); // ★ NEW
+      await uploadNewFileIfAny();
 
       alert("수정되었습니다.");
       navigate(`/ApprovalView/${encodeURIComponent(docId)}`);
@@ -225,7 +263,11 @@ function ApprovalEdit() {
       </div>
 
       <main className="container-xxl py-4 flex-grow-1">
-        {err && <div className="alert alert-danger" role="alert">{err}</div>}
+        {err && (
+          <div className="alert alert-danger" role="alert">
+            {err}
+          </div>
+        )}
 
         {loading ? (
           <div className="card shadow-sm mb-3">
@@ -289,13 +331,15 @@ function ApprovalEdit() {
                     />
                   </div>
 
-                  {/* ★ NEW: 기존 첨부 표시(유지됨) + 다운로드 링크 */}
+                  {/* 기존 첨부 표시 + 다운로드 링크 */}
                   <div className="col-12">
                     <label className="form-label">기존 첨부</label>
                     {existingFileName ? (
                       <div className="small">
                         <a
-                          href={`${API_BASE}/api/approvals/${encodeURIComponent(docId)}/file`}
+                          href={`${API_BASE}/api/approvals/${encodeURIComponent(
+                            docId
+                          )}/file`}
                           target="_blank"
                           rel="noreferrer"
                         >
@@ -307,32 +351,47 @@ function ApprovalEdit() {
                     )}
                   </div>
 
-                  {/* 첨부: 새 파일 선택 → 저장 시 교체 업로드 */}
+                  {/* 새 파일 선택 → 저장 시 교체 업로드 */}
                   <div className="col-12">
                     <label className="form-label">새로 업로드할 첨부</label>
-                    <input className="form-control" type="file" onChange={handleFiles} />
+                    <input
+                      className="form-control"
+                      type="file"
+                      onChange={handleFiles}
+                    />
                     {form.files?.length > 0 && (
                       <ul className="small text-muted mb-0 mt-2">
-                        <li>{form.files[0].name} ({Math.round(form.files[0].size / 1024)} KB)</li>
+                        <li>
+                          {form.files[0].name} (
+                          {Math.round(form.files[0].size / 1024)} KB)
+                        </li>
                       </ul>
                     )}
                     <div className="form-text">
-                      새 파일을 선택하고 <strong>저장</strong>하면 기존 파일이 교체됩니다.
+                      새 파일을 선택하고 <strong>저장</strong>하면 기존 파일이
+                      교체됩니다.
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* TIMEOFF 상세 (쓰기 화면과 동일) */}
+            {/* TIMEOFF 상세 */}
             {isTimeoff && (
               <div className="card shadow-sm mb-3">
-                <div className="card-header bg-white"><strong>휴가 / 근무 변경 상세</strong></div>
+                <div className="card-header bg-white">
+                  <strong>휴가 / 근무 변경 상세</strong>
+                </div>
                 <div className="card-body">
                   <div className="row g-3">
                     <div className="col-md-3">
                       <label className="form-label">유형</label>
-                      <select className="form-select" name="timeoffType" value={form.timeoffType} onChange={handleChange}>
+                      <select
+                        className="form-select"
+                        name="timeoffType"
+                        value={form.timeoffType}
+                        onChange={handleChange}
+                      >
                         <option value="ANNUAL">연차</option>
                         <option value="HALF">반차</option>
                         <option value="SICK">병가</option>
@@ -340,15 +399,34 @@ function ApprovalEdit() {
                     </div>
                     <div className="col-md-3">
                       <label className="form-label">시작일</label>
-                      <input type="date" className="form-control" name="timeoffStart" value={form.timeoffStart} onChange={handleChange} />
+                      <input
+                        type="date"
+                        className="form-control"
+                        name="timeoffStart"
+                        value={form.timeoffStart}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-3">
                       <label className="form-label">종료일</label>
-                      <input type="date" className="form-control" name="timeoffEnd" value={form.timeoffEnd} onChange={handleChange} />
+                      <input
+                        type="date"
+                        className="form-control"
+                        name="timeoffEnd"
+                        value={form.timeoffEnd}
+                        onChange={handleChange}
+                      />
                     </div>
                     <div className="col-md-12">
                       <label className="form-label">사유</label>
-                      <textarea className="form-control" name="timeoffReason" rows={3} value={form.timeoffReason} onChange={handleChange} placeholder="사유를 입력하세요" />
+                      <textarea
+                        className="form-control"
+                        name="timeoffReason"
+                        rows={3}
+                        value={form.timeoffReason}
+                        onChange={handleChange}
+                        placeholder="사유를 입력하세요"
+                      />
                     </div>
                   </div>
                 </div>

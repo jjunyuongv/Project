@@ -1,0 +1,60 @@
+/* shiftMemoModal.css */
+.shift-memo-modal {
+  width: 500px;
+  max-width: 90%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.memo-modal-header {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.memo-modal-body textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.memo-view-content {
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.no-memo-text {
+  color: #999;
+  font-style: italic;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.save-btn, .cancel-btn, .edit-btn, .delete-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.save-btn { background: #3b82f6; color: white; }
+.cancel-btn { background: #e2e8f0; color: #1e293b; }
+.edit-btn { background: #facc15; color: #1e293b; }
+.delete-btn { background: #ef4444; color: white; }

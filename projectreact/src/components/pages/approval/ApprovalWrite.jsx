@@ -13,7 +13,7 @@ const TYPE_MAP = {
   "기타": "ETC",
 };
 
-/* === 공통 fetch 유틸(과한 예외/중복 축소) === */
+/* === 공통 fetch 유틸(간결 유지) === */
 class HttpError extends Error {
   constructor(status, statusText) {
     super(`${status} ${statusText}`.trim());
@@ -21,13 +21,34 @@ class HttpError extends Error {
     this.status = status;
   }
 }
-async function fetchOk(url, init) {
-  const res = await fetch(url, init);
+
+// ★ 변경: XSRF 토큰을 쿠키에서 읽고, 모든 fetch에 쿠키 동봉 + 헤더 자동 추가
+const getCookie = (name) =>
+  document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+
+async function fetchOk(url, init = {}) {
+  // ★ 변경: 기본 Accept 유지 + XSRF 헤더 주입(이미 있으면 건드리지 않음)
+  const headers = new Headers(init.headers || { Accept: "application/json" });
+  const xsrf = getCookie("XSRF-TOKEN") || getCookie("X-XSRF-TOKEN");
+  if (xsrf && !headers.has("X-XSRF-TOKEN")) {
+    headers.set("X-XSRF-TOKEN", decodeURIComponent(xsrf));
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "include", // ★ 변경: JSESSIONID 등 세션 쿠키 동봉
+  });
+
   if (!res.ok) throw new HttpError(res.status, res.statusText);
   return res;
 }
+
+// 응답에서 문서 ID 추출(서버 구현 케이스 커버)
 async function extractDocIdFromResponse(res) {
-  // 본문(JSON 또는 텍스트) & Location 헤더 기반 추출
   let docId = null, data = null;
   try {
     const cloned = res.clone();
@@ -66,7 +87,7 @@ function ApprovalWrite() {
     title: "",
     type: "휴가/근무 변경",
     content: "",
-    files: [],
+    files: [], // ★ 참고: 여러 개 선택해도 업로드는 첫 번째 파일만 사용
     // TIMEOFF
     timeoffType: "ANNUAL",
     timeoffStart: "",
@@ -125,6 +146,7 @@ function ApprovalWrite() {
     try {
       setSubmitting(true);
 
+      // 공통 헤더
       const baseHeaders = { Accept: "application/json" };
       if (employeeId && /^\d+$/.test(employeeId)) {
         baseHeaders["X-Employee-Id"] = String(Number(employeeId));
@@ -132,12 +154,13 @@ function ApprovalWrite() {
 
       let res;
       if (form.files?.length > 0) {
+        // ★ FormData 업로드: Content-Type은 브라우저가 자동 설정하므로 지정하지 않음
         const fd = new FormData();
         fd.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-        fd.append("file", form.files[0]);
+        fd.append("file", form.files[0]); // ★ 첫 번째 파일만 업로드
         res = await fetchOk(`${API_BASE}/api/approvals`, {
           method: "POST",
-          headers: baseHeaders, // FormData는 Content-Type 자동
+          headers: baseHeaders,
           body: fd,
         });
       } else {
@@ -223,7 +246,7 @@ function ApprovalWrite() {
                   />
                 </div>
 
-                {/* 첨부 미리보기 */}
+                {/* 첨부 미리보기 (여러 개 선택 가능하지만 업로드는 첫 파일만) */}
                 <div className="col-12">
                   <label className="form-label">첨부</label>
                   <input className="form-control" type="file" multiple onChange={handleFiles} />
@@ -235,6 +258,9 @@ function ApprovalWrite() {
                         </li>
                       ))}
                     </ul>
+                  )}
+                  {form.files?.length > 1 && (
+                    <div className="form-text">여러 파일을 선택해도 <strong>첫 번째 파일</strong>만 업로드됩니다.</div>
                   )}
                 </div>
               </div>

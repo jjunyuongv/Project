@@ -650,7 +650,7 @@ export default function ChatMain() {
           <div className="hero__mask" />
           <div className="hero__content">
             <h1 className="hero__title">
-              {activeRoom?.type === "DIRECT" ? activeRoom?.peerName || "채팅" : (activeRoom?.name || "채팅")}
+              채팅
             </h1>
           </div>
         </section>

@@ -18,6 +18,20 @@ CREATE TABLE SHIFT_MEMOS(
  CONTENT TEXT NOT NULL,
  PRIMARY KEY (MEMO_ID)
  );
+ 
+ CREATE TABLE calendars( 
+ shift_id varchar(255) NOT NULL,
+ all_day varchar(255) NOT NULL,
+ day_type varchar(255) NOT NULL,
+ end_time datetime(6) NULL,
+ start_time datetime(6) NULL,
+ team_name varchar(255),
+ PRIMARY KEY (shift_id)
+ );
+ 
+ALTER TABLE SHIFT_MEMOS
+ADD COLUMN TEAM_NAME VARCHAR(20) NOT NULL DEFAULT 'A조' AFTER MEMO_DATE;
+ 
 ----------------------------------------------------- 준영
 -- 전자결재 문서 테이블 
 CREATE TABLE approval_doc(
