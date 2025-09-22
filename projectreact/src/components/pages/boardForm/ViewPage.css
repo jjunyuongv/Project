@@ -1,0 +1,139 @@
+/* =========================
+   View Page (ViewPage.css)
+   ========================= */
+
+.hero__title {
+  position: relative;
+  color: #fff;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.view-page {
+  background: #fff;      /* 페이지 전체 배경 흰색 */
+  min-height: 100vh;     /* 화면 세로 전체 채우기 */
+}
+
+/* --- 본문 컨테이너(히어로 아래) --- */
+.view-container {
+  width: 92%;
+  max-width: 960px;
+  margin: 26px auto 48px;     /* 가운데 + 위아래 여백 */
+  
+}
+
+/* --- 카드형 테이블 --- */
+.view-table {
+  width: 100%;
+  border: 1px solid #e6e9ef;
+  border-radius: none;
+  background: #fff;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0,0,0,.06);
+}
+
+.view-table td:first-child {
+  text-align: center;
+}
+.view-table tbody tr { border-top: 1px solid #eef1f6; }
+.view-table tbody tr:first-child { border-top: 0; }
+
+
+.view-table td {
+  padding: 12px 16px;
+  font-size: 15px;
+  color: #374151;
+  vertical-align: middle;
+  
+}
+.view-table td:first-child {
+  width: 180px;
+  white-space: nowrap;
+  background: #2f4f6f;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* 작성일, 수정일을 같은 칸 안에 인라인 표시 */
+.inline-info {
+  margin-left: 3px;   /* 작성자 값과 간격 */
+  color: #555;
+  font-size: 15px;
+}
+
+/* 내용(여러 줄) */
+.view-table .view-content { white-space: pre-wrap; line-height: 1.6; }
+
+/* 첨부파일 영역의 다운로드 버튼(파란 바 느낌을 원하면 이 클래스를 버튼에 추가) */
+
+
+.download-btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px;
+  color: #163a54;
+}
+
+.download-btn:hover {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px;
+  color: #5aaeeb !important;
+}
+
+/* 버튼 행 */
+.button-row {
+  padding: 16px !important;   /* 테이블 기본 패딩 덮기 */
+  background: #f9fbff;
+}
+.btn-group-right {
+  display: flex;
+  justify-content: center;    /* 가운데 정렬(스샷처럼) */
+  gap: 10px;
+}
+
+/* 외곽선 스타일 버튼 3종 (삭제/수정/목록) */
+.btn-delete,
+.btn-edit,
+.btn-list {
+  background: #fff !important;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* 삭제: 빨강 외곽선 */
+.btn-delete {
+  border: 1px solid #ef4444 !important;
+  color: #ef4444 !important;
+}
+.btn-delete:hover { background: #fff0f0 !important; }
+
+/* 수정: 파랑 외곽선 */
+.btn-edit {
+  border: 1px solid #1f7ae0 !important;
+  color: #1f7ae0 !important;
+}
+.btn-edit:hover { background: #eaf3ff !important; }
+
+/* 목록: 회색 외곽선 */
+.btn-list {
+  border: 1px solid #9ca3af !important;
+  color: #4b5563 !important;
+}
+.btn-list:hover { background: #f3f4f6 !important; }
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .hero { height: 200px; }
+  .hero__title { font-size: 32px; }
+  .view-container { width: 94%; }
+  .view-table td:first-child { width: 130px; }
+}

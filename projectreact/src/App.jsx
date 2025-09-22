@@ -33,6 +33,7 @@ import ApprovalWrite from "./components/pages/approval/ApprovalWrite";
 import BoardPage from "./components/pages/boardForm/BoardPage";
 import ViewPage from "./components/pages/boardForm/ViewPage";
 import WritePage from "./components/pages/boardForm/WritePage";
+import EditPage from "./components/pages/boardForm/EditPage";
 
 // 시설
 import FacilitiesList from "./components/pages/Facilities/FacilitiesList";
@@ -221,9 +222,16 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
         <Route path="/ApprovalEdit" element={<ProtectedRoute><ApprovalEdit /></ProtectedRoute>} />
 
         {/* 게시판 */}
-        <Route path="/BoardPage" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
-        <Route path="/ViewPage" element={<ProtectedRoute><ViewPage /></ProtectedRoute>} />
-        <Route path="/WritePage" element={<ProtectedRoute><WritePage /></ProtectedRoute>} />
+        <Route path="/BoardPage">
+          <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><BoardPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+        </Route>
+        <Route path="/ViewPage">
+          <Route path=":id" element={<ProtectedRoute><ViewPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+        </Route>
+        <Route path="/WritePage" element={<ProtectedRoute><WritePage baseUrl={url.jsp} /></ProtectedRoute>} />
+        <Route path="/EditPage">
+          <Route path=":id" element={<ProtectedRoute><EditPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
+        </Route>
 
         {/* 채팅 / 위치 */}
         <Route path="/ChatMain" element={<ProtectedRoute><ChatMain /></ProtectedRoute>} />

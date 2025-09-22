@@ -1,141 +1,205 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import axios from "axios";
+import { FileDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge, Button, Form, InputGroup } from "react-bootstrap";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import NavigatePage from "../Facilities/template/NavigatePage";
 import "./BoardPage.css";
 
-const SAMPLE_ROWS = [
-  { no: 14, title: "공항 접근 차트 및 항로 정보 (Jeppesen Charts)", file: true,  writerId: "admin",    dept: "운영관리부", date: "2025-07-21" },
-  { no: 13, title: "2025 승무원 교육자료",                          file: false, writerId: "admin",    dept: "운영관리부", date: "2025-07-21" },
-  { no: 12, title: "공항 접근 차트 및 항로 정보 (Jeppesen Charts)", file: false, writerId: "admin",    dept: "운영관리부", date: "2025-07-20" },
-  { no: 11, title: "공항 접근 차트 및 항로 정보 (Jeppesen Charts)", file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-  { no: 10, title: "국가별 항공 규제 관련 문서 (NOTAM, AIP 등)",     file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-  { no: 9,  title: "항공법 및 항공청 규정 (국토교통부, FAA, ICAO 등)", file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-  { no: 8,  title: "시뮬레이터 훈련 매뉴얼 (Simulator Training Program)", file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-  { no: 7,  title: "MEL/CDL 목록 (Minimum Equipment List / Configuration Deviation List)", file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-  { no: 6,  title: "장비 목록 및 관리대장 (Equipment List & Component Manual)", file: false, writerId: "dhdldzzz", dept: "운영관리부", date: "2025-07-16" },
-];
+
+
 
 const PAGE_SIZE = 8;
 
-export default function BoardPage() {
-  const [category, setCategory] = useState("전체");
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
+export default function BoardPage(props) {
+  const navigate = useNavigate();
+  const [respData, setRespData] = useState([]);
+  const [count, setCount] = useState(0);
 
-  const filtered = useMemo(() => {
-    const keyword = q.trim().toLowerCase();
-    const byKeyword = SAMPLE_ROWS.filter(r =>
-      r.title.toLowerCase().includes(keyword) ||
-      r.writerId.toLowerCase().includes(keyword) ||
-      r.dept.toLowerCase().includes(keyword)
-    );
-    return byKeyword;
-  }, [q, category]);
+  /* const [category, setCategory] = useState("전체");
+  const [q, setQ] = useState(""); */
+  const pageSize = 5;
+  const blockSize = 3;
+  /* const [isEndLoading, setIsEndLoading] = useState(false); */
+  const { page, searchField, searchWord } = useParams();
+  const [formData, setFormData] = useState({
+    searchField: "archTitle",
+    searchWord: ""
+  });
+  const now = new Date();
+  // 현재시간 등록시간 비교 위해 필요
+  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 16);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  function movePage(e, page, searchChange = false) {
+    e.preventDefault();
+    if (searchChange) {
+      navigate("/BoardPage/" + page + "/" + formData.searchField + "/" + formData.searchWord);
+    } else {
+      navigate("/BoardPage/" + page);
+    }
+  }
 
-  const handleSearch = (e) => {
+  const formDataHandler = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  }
+
+  const getData = async () => {
+    let response = [];
+    let countResp = []
+    if (searchField && searchWord) {
+      setFormData({ searchField: searchField, searchWord: searchWord });
+      countResp = await axios.get(props.baseUrl + "/api/archive/count/" + searchField + "/" + searchWord);
+      response = await axios.get(props.baseUrl + "/api/archive/" + searchField + "/" + searchWord + "/page/" + page + "/" + PAGE_SIZE);
+    } else {
+
+      setFormData({ searchField: "archTitle", searchWord: "" });
+      countResp = await axios.get(props.baseUrl + "/api/archive/count");
+      response = await axios.get(props.baseUrl + "/api/archive/page/" + page + "/" + 5);
+    }
+    setCount(countResp.data);
+    setRespData(response.data);
+    // setIsEndLoading(true);
+  }
+
+  useEffect(function () {
+    getData();
+  }, []);
+
+  useEffect(function () {
+    getData();
+  }, [page, searchField, searchWord]);
+
+  const download = async (archId) => {
+    const response = await axios.get(props.baseUrl + "/api/archivefiles/" + archId);
+    let ofile = response.data;
+    axios({
+      url: props.baseUrl + "/api/archivefiles/download/" + archId,
+      method: 'GET',
+      responseType: 'blob', // 필수
+    }).then((res) => {
+      ofile.forEach(element => {
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', element.ofile); // 서버에서 파일명 내려주면 그걸로 설정 가능
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+      });
+    });
+  }
+
+  const searchData = async (e) => {
+    e.preventDefault();
+    movePage(e, 1, true);
+  }
+  let trData = [];
+  if (Array.isArray(respData)) {
+    respData.forEach(element => {
+      trData.push(
+        <tr key={element.archId}>
+          {Math.floor((new Date (localTime).getTime() -new Date (element.regDt).getTime())/60000) < 1440 ?
+          (<td><h5><Badge className="badge-plain">NEW</Badge></h5></td>) :(<td>{element.archId}</td>)}
+          <td><Link onClick={(e) => { goView(e, element.archId) }}>{element.archTitle} </Link></td>
+          <td><Button className="icon-button" hidden={element.isDownloadfiles === "파일있음" ? 
+            false : true} onClick={() => { download(element.archId) }}>
+              <FileDown size={20} /> </Button></td>
+          <td>{element.regUserId}</td>
+          <td>{element.regDt.replace("T"," ")}</td>
+        </tr>
+      );
+    });
+    if (trData.length === 0) {
+      trData.push(
+        <tr key={"noData"}>
+          <td colSpan={8}>결과가 없습니다.</td>
+        </tr>);
+    }
+  };
+
+ /*  const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-  };
+  }; */
+
+  function goWrite(e) {
+    e.preventDefault();
+    navigate("/WritePage");
+  }
+  function goView(e, id) {
+    e.preventDefault();
+    navigate("/ViewPage/" + id);
+  }
 
   return (
     <div className="boardpage">
       <div className="hero">
         <div className="hero__overlay" />
-        <h1 className="hero__title">운항매뉴얼</h1>
+        <h1 className="hero__title">문서보관소</h1>
       </div>
 
-      <form className="toolbar" onSubmit={handleSearch}>
-        <select
-          className="toolbar__select"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option>전체</option>
-          <option>매뉴얼</option>
-          <option>규정/법규</option>
-          <option>교육</option>
-        </select>
+      <div className="search-container mt-4">
+      <div className="search-wrap" >
+        <form onSubmit={searchData} method="post" className="my-2">
+          <InputGroup>
+            <select className="search-select" name="searchField" id="searchField" 
+              value={formData.searchField} 
+              required onChange={formDataHandler}>
 
-        <div className="toolbar__search">
-          <input
-            type="text"
-            placeholder="검색어를 입력하세요"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <button type="submit" aria-label="검색">검색</button>
-        </div>
+              <option value="archTitle">제목</option>
+              <option value="archCtnt">내용</option>
+            </select>
+            
+            <Form.Control className="srchWord" type="text" 
+            name="searchWord" id="searchWord" 
+            placeholder="검색어를 입력하세요" value={formData.searchWord} required onChange={formDataHandler} />
+            <Button className="basic-button" type="submit">검색</Button>
+            <Button className="basic-button mx-3" onClick={(e) => {
+              e.preventDefault();
+              setFormData({
+                searchField: "archTitle",
+                searchWord: ""
+              });
+              navigate("/BoardPage/1");
+            }}> 검색 초기화</Button>
+            <Button
+              variant="primary"
+              className="basic-button write-btn rounded-0"
+              onClick={goWrite}
+            >
+              글쓰기
+            </Button>
+          </InputGroup>
+        </form>
 
-        <Link to="/submit-report" className="toolbar__write">글쓰기</Link>
-      </form>
-
-      <div className="table-wrap">
-        <table className="board-table">
+<div className="board-table-container">
+  <table className="board-table mx-auto" >
           <thead>
             <tr>
-              <th style={{width: 80}}>번호</th>
-              <th>제목</th>
-              <th style={{width: 90}}>첨부파일</th>
-              <th style={{width: 120}}>작성자ID</th>
-              <th style={{width: 120}}>소속부서</th>
-              <th style={{width: 120}}>등록일</th>
+              <th width= "11%">번호</th>
+              <th width= "40%">제목</th>
+              <th width= "10%">첨부파일</th>
+              <th width= "13%">작성자ID</th>
+              {/* <th style={{width: 120}}>소속부서</th> */}
+              <th width= "13%">등록일</th>
             </tr>
           </thead>
-          <tbody>
-            {pageRows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="empty">검색 결과가 없습니다.</td>
-              </tr>
-            ) : (
-              pageRows.map((r) => (
-                <tr key={r.no}>
-                  <td>{r.no}</td>
-                  <td className="title-cell">
-                    <Link className="linklike" to={`/archive/${r.no}`}>
-                      {r.title}
-                    </Link>
-                  </td>
-                  <td>{r.file ? "⬇" : "-"}</td>
-                  <td>{r.writerId}</td>
-                  <td>{r.dept}</td>
-                  <td>{r.date}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
 
-      <ul className="pagination">
-        <li>
-          <button
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            이전
-          </button>
-        </li>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-          <li key={n}>
-            <button
-              className={n === page ? "is-active" : ""}
-              onClick={() => setPage(n)}
-            >
-              {n}
-            </button>
-          </li>
-        ))}
-        <li>
-          <button
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            다음
-          </button>
-        </li>
-      </ul>
-    </div>
+          <tbody>
+            {trData}
+          </tbody>
+
+        </table>
+        <NavigatePage 
+        key={page + "-" + searchField + "-" + searchWord + "-" + count} 
+        count={count} pageSize={pageSize} blockSize={blockSize} movePage={movePage} curPage={parseInt(page)} />
+      </div>
+      </div>
+      </div>
+      </div>
   );
 }
