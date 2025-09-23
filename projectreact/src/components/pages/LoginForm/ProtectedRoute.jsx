@@ -2,7 +2,7 @@
 import React, { useEffect } from "react"; // ★ useEffect 사용
 import { Navigate, useLocation } from "react-router-dom";
 import useAuthRedirect from "./useAuthRedirect";
-import "./Modal.css";
+import "./modal.css";
 
 /* ──────────────────────────────────────────────────────────────────────────
    ★ 추가: 중복 안전(ref-count) 스크롤 잠금 유틸

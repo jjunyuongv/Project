@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mysql:8.1
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: 404notfound
+      MYSQL_USER: 404notfound
+      MYSQL_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build: ./404NotFound
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/404notfound?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: 404notfound
+      SPRING_DATASOURCE_PASSWORD: 1234
+    depends_on:
+      - db
+
+  frontend:
+    build: ./projectreact
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
