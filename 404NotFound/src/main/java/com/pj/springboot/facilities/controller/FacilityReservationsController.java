@@ -34,7 +34,7 @@ public class FacilityReservationsController {
 
 	// 승인/반려 처리
 	@PostMapping("/{reservationId}")
-	public int approval(@PathVariable int reservationId, @RequestBody FacilityReservationDTO dto) {
+	public int approval(@PathVariable("reservationId") int reservationId, @RequestBody FacilityReservationDTO dto) {
 		try {
 			return facilityReservationsService.approvalFacilityReservation(reservationId, dto.getReservationStatus());
 		} catch (Exception e) {
@@ -44,7 +44,7 @@ public class FacilityReservationsController {
 
 	// 삭제
 	@DeleteMapping("/{reservationId}")
-	public int deleteReservation(@PathVariable int reservationId) {
+	public int deleteReservation(@PathVariable("reservationId") int reservationId) {
 		try {
 			return facilityReservationsService.deleteReservation(reservationId);
 		} catch (Exception e) {
@@ -57,16 +57,16 @@ public class FacilityReservationsController {
 	// 작성일이 빠른 순서대로
 	@GetMapping("/approval")
 	public ResponseEntity<List<FacilityReservationDTO>> listSearchScheduled(
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord,
-			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "5") int size) {
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord,
+			@RequestParam(defaultValue = "1", name = "page") int page, @RequestParam(defaultValue = "5", name = "size") int size) {
 		return ResponseEntity.ok(facilityReservationsService.getListScheduled(searchField, searchWord, page, size));
 	}
 
 	// 특정 시설물의 예약 검색 리스트 페이징 적용
 	@GetMapping("/{facilityId}")
-	public ResponseEntity<List<FacilityReservationDTO>> listSearchByFacilityId(@PathVariable int facilityId,
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord,
-			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "5") int size) {
+	public ResponseEntity<List<FacilityReservationDTO>> listSearchByFacilityId(@PathVariable("facilityId") int facilityId,
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord,
+			@RequestParam(defaultValue = "1", name = "page") int page, @RequestParam(defaultValue = "5", name = "size") int size) {
 		List<FacilityReservationDTO> list = facilityReservationsService.getListByFacilityId(facilityId, searchField,
 				searchWord, page, size);
 		return ResponseEntity.ok(list);
@@ -75,29 +75,29 @@ public class FacilityReservationsController {
 	// 검색 후 페이징된 리스트
 	@GetMapping()
 	public ResponseEntity<List<FacilityReservationDTO>> listSearchWithPaging(
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord,
-			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "5") int size) {
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord,
+			@RequestParam(defaultValue = "1", name = "page") int page, @RequestParam(defaultValue = "5", name = "size") int size) {
 		return ResponseEntity.ok(facilityReservationsService.getList(searchField, searchWord, page, size));
 	}
 
 	// 전체 예약 개수
 	@GetMapping("/count")
-	public Long count(@RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord) {
+	public Long count(@RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord) {
 		return facilityReservationsService.count(searchField, searchWord);
 	}
 
 	// 특정 시설물의 예약 개수
 	@GetMapping("/count/{facilityId}")
-	public Long searchCountByfacilityId(@PathVariable int facilityId,
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord) {
+	public Long searchCountByfacilityId(@PathVariable("facilityId") int facilityId,
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord) {
 		return facilityReservationsService.countByfacilityId(facilityId, searchField, searchWord);
 	}
 
 	// 지나지 않은 예약 개수
 	@GetMapping("/approval/count")
-	public Long searchScheduledCount(@RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord) {
+	public Long searchScheduledCount(@RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord) {
 		return facilityReservationsService.scheduledCount(searchField, searchWord);
 	}
 }

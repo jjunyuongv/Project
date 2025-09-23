@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.pj.springboot.facilities.FacilityReservations;
@@ -18,7 +19,7 @@ public interface FacilityReservationsRepository extends JpaRepository<FacilityRe
 
 	@Query("SELECT fr FROM FacilityReservations fr JOIN FETCH fr.reservationEmployeeId "
 			+ " WHERE fr.reservationFacilityId.facilityId = :facilityId")
-	List<FacilityReservations> findByFacilityId(int facilityId);
+	List<FacilityReservations> findByFacilityId(@Param("facilityId") int facilityId);
 
 	@EntityGraph(attributePaths = { "reservationEmployeeId" })
 	Page<FacilityReservations> findByReservationFacilityId_FacilityId(int facilityId, Pageable pageable);
@@ -54,12 +55,12 @@ public interface FacilityReservationsRepository extends JpaRepository<FacilityRe
 	@EntityGraph(attributePaths = { "reservationEmployeeId", "reservationFacilityId" })
 	@Query(" SELECT fr FROM FacilityReservations fr WHERE fr.reservationEndTime > :now "
 			+ " ORDER BY CASE fr.reservationStatus " + "WHEN '대기' THEN 1 ELSE 2 END, fr.reservationDate ")
-	Page<FacilityReservations> findScheduleReservation(LocalDateTime now, Pageable pageable);
+	Page<FacilityReservations> findScheduleReservation(@Param("now") LocalDateTime now, Pageable pageable);
 
 	Long countByReservationEndTimeAfter(LocalDateTime now);
 
-	Long countByReservationEmployeeId_nameLikeAndReservationEndTimeAfter(String employeeName,
-			LocalDateTime now);
+	Long countByReservationEmployeeId_nameLikeAndReservationEndTimeAfter(@Param("employeeName") String employeeName,
+			@Param("now") LocalDateTime now);
 
 	// 결재 처리 할때 보여주는 리스트
 	// 대기우선 정렬 후 작성일이 빠른 기준
@@ -67,7 +68,7 @@ public interface FacilityReservationsRepository extends JpaRepository<FacilityRe
 	@Query(" SELECT fr FROM FacilityReservations fr " + " WHERE fr.reservationEndTime > :now "
 			+ " AND fr.reservationEmployeeId.name LIKE :employeeName "
 			+ " ORDER BY CASE fr.reservationStatus " + "WHEN '대기' THEN 1 ELSE 2 END, fr.reservationDate ")
-	Page<FacilityReservations> findSearchEmployeeNameScheduleReservation(String employeeName, LocalDateTime now,
+	Page<FacilityReservations> findSearchEmployeeNameScheduleReservation(@Param("employeeName") String employeeName, @Param("now") LocalDateTime now,
 			Pageable pageable);
 
 	// 사번 varchar라면 String으로
