@@ -31,13 +31,19 @@
 .hero__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15));
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0));
+}
+.hero__title {
+  position: relative;
+
+  font-size: 40px;
+  font-weight: 700;
 }
 
 /* 작성 카드 래퍼 */
 .form-wrap {
   max-width: 1100px;
-  margin: 14px auto;
+  margin: 25px auto;
   padding: 0 12px 18px;
 }
 
@@ -131,50 +137,51 @@
   gap: 12px;
 }
 
-
-
-/* 하단 버튼 영역 */
+/* 공통 버튼 베이스 */
 .actions {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   padding: 16px 12px 22px;
   margin-top: 20px;
-  
-}
-.actions .btn,
-.actions button {
-  min-width: 100px;
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  transition: background-color .2s ease;
-}
-.actions .btn:hover,
-.actions button:hover { 
-  background: #a9c7ff; 
-  color: #fff;
-  border-radius: 4px;
-}
-.actions .btn-primary {
-  background: var(--brand);
-  color: #fff;
-  border-color: #a9c7ff;
-  border-radius: 4px;
 }
 
-/* 카드 밖 버튼 묶음(스크롤 따라오기: sticky) */
-.actions.actions-out {
-  position: sticky;
-  bottom: 0;            /* ✅ 카드 하단 기준으로 붙음 */
-  justify-content: center;
-  gap: 12px;
-  padding: 12px;
-  background: none;
+.actions .btn,
+.actions button {
+  min-width: 108px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #111827;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
 }
+
+/* 브랜드(진한) 버튼: 등록하기 */
+.actions .btn-primary {
+  background: none;
+  border-color: var(--brand, #2f4f6f);
+  color: #2f4f6f;
+}
+.actions .btn-primary:hover {
+  background: #eaf3ff;
+  border-color: #244156;
+}
+
+/* 회색 외곽선: 목록/중립 */
+.actions .btn-ghost {
+  background: #fff !important;
+  border: 1px solid #9ca3af !important;
+  color: #4b5563 !important;
+}
+
+.actions .btn-ghost:hover {
+  background: #f3f4f6 !important;
+}
+
+
 
 /* 반응형 */
 @media (max-width: 768px) {

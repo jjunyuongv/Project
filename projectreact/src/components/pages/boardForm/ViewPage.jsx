@@ -108,21 +108,20 @@ function ViewPage(props) {
             <td>내용</td>
             <td style={{ whiteSpace: "pre-wrap" }}>{respData.archCtnt}</td>
           </tr>
-            <td colSpan="2" className="button-row">
+        </tbody>
+        </Table>
+              <div className="form-actions sticky">
+          <div className="button-row">
               <div className="btn-group-right">
                 <Button className="btn-edit" onClick={goEdit}>수정하기</Button>
                 <Button className="btn-delete" onClick={confirmDelete}>삭제하기</Button>
                 <Button className="btn-list" onClick={goList}>목록으로</Button>
               </div>
-            </td>
-        </tbody>
-        </Table>
+              </div>
         </div>
-        </div>
-       
+      </div>
+      </div>
   );
-
-            
 }
 
 export default ViewPage;

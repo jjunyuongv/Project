@@ -64,7 +64,7 @@ function WritePage(props) {
     navigate("/BoardPage/1");
   }
 
- /*  const handleReset = () => setFormData({ archTitle: "", regUserId: user.employeeId, archCtnt: "" }); */
+  /* const handleReset = () => setFormData({ archTitle: "", regUserId: user.employeeId, archCtnt: "" }); */
 
 
   // db에 저장하기 위한 파일명을 가진 list
@@ -115,18 +115,6 @@ function WritePage(props) {
                 </td>
               </tr>
               <tr>
-                <td className="cell-label">첨부파일</td>
-                <td className="cell-field">
-                  <Form.Control
-                    name="files"
-                    type="file"
-                    onChange={fileDataHandlerAuto}
-                    multiple
-                    className="input-noborder"
-                  />
-                </td>
-              </tr>
-              <tr>
                 <td className="cell-label">작성자</td>
                 <td className="cell-field">
                   <Form.Control
@@ -134,6 +122,18 @@ function WritePage(props) {
                     name="regUserId"
                     value={formData.regUserId}
                     readOnly
+                    className="input-noborder"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td className="cell-label">첨부파일</td>
+                <td className="cell-field">
+                  <Form.Control
+                    name="files"
+                    type="file"
+                    onChange={fileDataHandlerAuto}
+                    multiple
                     className="input-noborder"
                   />
                 </td>

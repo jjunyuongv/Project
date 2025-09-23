@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { Container, Table, Button, Form, Spinner } from "react-bootstrap";
-import "./BoardPage.css";
-import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { useEffect, useState } from "react";
+import { Button, Container, Form, Spinner, Table } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
 import { v4 } from "uuid";
 import { useAuth } from "../LoginForm/AuthContext";
+import "./EditPage.css";
 
 function EditPage(props) {
 
@@ -99,56 +99,93 @@ function EditPage(props) {
   }
   
   return (
-    <Container className="write-container">
-      <h2>게시글 작성</h2>
-      <Form onSubmit={handleSubmit}>
-        <Table className="write-table">
-          <tbody>
-            <tr>
-              <td>제목</td>
-              <td>
-                <Form.Control type="text" name="archTitle" value={formData.archTitle} onChange={handleChange} />
-              </td>
-            </tr>
-            <tr>
-              <td>작성자</td>
-              <td>
-                <Form.Control type="text" name="regUserId" value={formData.regUserId} readOnly />
-              </td>
-            </tr>
-            <tr>
-              <td>수정자</td>
-              <td>
-                <Form.Control type="text" name="udtUserId" value={formData.udtUserId} readOnly />
-              </td>
-            </tr>
-            <tr>
-              <td>내용</td>
-              <td>
-                <Form.Control as="textarea" name="archCtnt" value={formData.archCtnt} onChange={handleChange} />
-              </td>
-            </tr>
-            <tr>
-              <td>첨부파일</td>
-              {/* 파일 업로드 버튼 */}
-              <td>
-                <Form.Control name="files" type="file" placeholder="첨부파일 업로드" onChange={fileDataHandlerAuto} multiple></Form.Control>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="2" className="button-row">
-                <Button type="submit">등록</Button>
-                <Button variant="secondary" onClick={handleReset}>
-                  초기화
-                </Button>
-                <Button variant="info" onClick={goList}>목록</Button>
+      <div className="form-page">
+    {/* 상단 히어로 */}
+    <section className="hero">
+      <div className="hero__overlay" />
+      <h1 className="hero__title">게시글 작성</h1>
+    </section>
 
-              </td>
-            </tr>
-          </tbody>
-        </Table>
-      </Form>
-    </Container>
+<Table className="write-table">
+  {/* 4열: 라벨/필드/라벨/필드 */}
+  <colgroup>
+    <col className="col-label" />
+    <col className="col-field" />
+    <col className="col-label" />
+    <col className="col-field" />
+  </colgroup>
+
+  <tbody>
+    {/* 제목: 오른쪽 3칸을 합쳐서 넓게 사용 */}
+    <tr>
+      <td className="cell-label">제목</td>
+      <td className="cell-field" colSpan={3}>
+        <Form.Control
+          type="text"
+          name="archTitle"
+          value={formData.archTitle}
+          onChange={handleChange}
+        />
+      </td>
+    </tr>
+
+    {/* 작성자 / 수정자: 네 칸을 각각 사용 */}
+    <tr>
+      <td className="cell-label">작성자</td>
+      <td className="cell-field">
+        <Form.Control
+          type="text"
+          name="regUserId"
+          value={formData.regUserId}
+          readOnly
+        />
+      </td>
+      <td className="cell-label">수정자</td>
+      <td className="cell-field">
+        <Form.Control
+          type="text"
+          name="udtUserId"
+          value={formData.udtUserId}
+          readOnly
+        />
+      </td>
+    </tr>
+
+    {/* 첨부파일: 오른쪽 3칸 합침 */}
+    <tr>
+      <td className="cell-label">첨부파일</td>
+      <td className="cell-field" colSpan={3}>
+        <Form.Control
+          name="files"
+          type="file"
+          onChange={fileDataHandlerAuto}
+          multiple
+        />
+      </td>
+    </tr>
+
+    {/* 내용: 오른쪽 3칸 합침 */}
+    <tr>
+      <td className="cell-label">내용</td>
+      <td className="cell-field" colSpan={3}>
+        <Form.Control
+          as="textarea"
+          name="archCtnt"
+          value={formData.archCtnt}
+          onChange={handleChange}
+          rows={12}
+        />
+      </td>
+    </tr>
+
+    </tbody>
+    </Table>
+      <div className="form-actions sticky">
+        <Button className="btn-edit" type="submit">등록하기</Button>
+        <Button className="btn-delete" variant="secondary" onClick={handleReset}>초기화</Button>
+        <Button className="btn-list" variant="info" onClick={goList}>목록으로</Button>
+        </div>
+    </div>
   );
 };
 
