@@ -36,7 +36,7 @@ public class AttendanceController {
 
 	// 작성
 	@PostMapping("/{attendanceId}")
-	public int updateAttendance(@PathVariable long attendanceId, @RequestBody AttendanceDTO dto) {
+	public int updateAttendance(@PathVariable("attendanceId") long attendanceId, @RequestBody AttendanceDTO dto) {
 		try {
 			return attendancesService.updateAttendance(attendanceId, dto);
 		} catch (Exception e) {
@@ -45,7 +45,7 @@ public class AttendanceController {
 	}
 
 	@PostMapping("/checkin/{employeeId}")
-	public int updateAttendanceStart(@PathVariable int employeeId) {
+	public int updateAttendanceStart(@PathVariable("employeeId") int employeeId) {
 		try {
 			return attendancesService.checkIn(employeeId);
 		} catch (Exception e) {
@@ -54,7 +54,7 @@ public class AttendanceController {
 	}
 
 	@PostMapping("/checkout/{employeeId}")
-	public int updateAttendanceEnd(@PathVariable int employeeId) {
+	public int updateAttendanceEnd(@PathVariable("employeeId") int employeeId) {
 		try {
 			return attendancesService.checkOut(employeeId);
 		} catch (Exception e) {
@@ -64,22 +64,22 @@ public class AttendanceController {
 
 	// 사원의 오늘 근태 ROW 가져오기
 	@GetMapping("/{employeeId}")
-	public AttendanceDTO getOne(@PathVariable int employeeId) {
+	public AttendanceDTO getOne(@PathVariable("employeeId") int employeeId) {
 		return attendancesService.getOne(employeeId);
 	}
 
 	// 근태 정보 얻기
 	@GetMapping()
-	public ResponseEntity<List<AttendanceDTO>> listWithPaging(@RequestParam(required = false) LocalDate date,
-			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "5") int size,
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord) {
+	public ResponseEntity<List<AttendanceDTO>> listWithPaging(@RequestParam(required = false, name = "date") LocalDate date,
+			@RequestParam(defaultValue = "1", name = "page") int page, @RequestParam(defaultValue = "5", name = "size") int size,
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord) {
 		return ResponseEntity.ok(attendancesService.getList(date, page, size, searchField, searchWord));
 	}
 
 	// 근태 정보 개수
 	@GetMapping("/count")
-	public Long searchCountWithDate(@RequestParam(required = false) LocalDate date,
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord) {
+	public Long searchCountWithDate(@RequestParam(required = false, name = "date") LocalDate date,
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord) {
 		return attendancesService.count(date, searchField, searchWord);
 	}
 
@@ -87,8 +87,8 @@ public class AttendanceController {
 
 	// 월별 근태 통계 개수
 	@GetMapping("/stat/count")
-	public Long searchCountWithMonth(@RequestParam String month, @RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord) {
+	public Long searchCountWithMonth(@RequestParam("month") String month, @RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord) {
 		LocalDate start = LocalDate.parse(month + "-01");
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 		return attendancesService.getStatCount(start, end, searchField, searchWord);
@@ -96,9 +96,9 @@ public class AttendanceController {
 
 	// 사원별 근태 월별 통계
 	@GetMapping("/stat")
-	public ResponseEntity<List<AttendanceStatDTO>> listSearchWithMonthAndPaging(@RequestParam String month,
-			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord, @RequestParam(defaultValue = "1") int page,
-			@RequestParam(defaultValue = "5") int size) {
+	public ResponseEntity<List<AttendanceStatDTO>> listSearchWithMonthAndPaging(@RequestParam("month") String month,
+			@RequestParam(required = false, name = "searchField") String searchField, @RequestParam(required = false, name = "searchWord") String searchWord, @RequestParam(defaultValue = "1", name = "page") int page,
+			@RequestParam(defaultValue = "5", name = "size") int size) {
 		LocalDate start = LocalDate.parse(month + "-01");
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 		return ResponseEntity

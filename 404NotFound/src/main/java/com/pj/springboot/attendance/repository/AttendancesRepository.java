@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.pj.springboot.attendance.dto.AttendanceStatDTO;
@@ -21,7 +22,7 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 
 	@EntityGraph(attributePaths = { "attendanceEmployeeId", "attendanceEditEmployeeId" })
 	Page<Attendances> findByAttendanceDate(LocalDate date, Pageable pageable);
-	
+
 	@EntityGraph(attributePaths = { "attendanceEmployeeId" })
 	List<Attendances> findByAttendanceDate(LocalDate today);
 
@@ -71,19 +72,19 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 			+ " SUM(CASE WHEN a.attendanceStatus = '결근' THEN 1 END) "
 			+ " ) FROM Attendances a JOIN a.attendanceEmployeeId e "
 			+ " WHERE a.attendanceDate BETWEEN :start AND :end " + " GROUP BY e.employeeId, e.name ")
-	Page<AttendanceStatDTO> getStats(LocalDate start, LocalDate end, Pageable pageable);
+	Page<AttendanceStatDTO> getStats(@Param("start") LocalDate start, @Param("end") LocalDate end, Pageable pageable);
 
 	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e "
 			+ " WHERE a.attendanceDate BETWEEN :start AND :end ")
-	long countByAttendanceDateBetween(LocalDate start, LocalDate end);
+	long countByAttendanceDateBetween(@Param("start") LocalDate start, @Param("end") LocalDate end);
 
 	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e"
 			+ " WHERE a.attendanceEmployeeId.name LIKE :employeeName AND a.attendanceDate BETWEEN :start AND :end ")
-	long countByAttendanceEmployeeId_NameLikeAndAttendanceDateBetween(String employeeName, LocalDate start, LocalDate end);
-	
+	long countByAttendanceEmployeeId_NameLikeAndAttendanceDateBetween(@Param("employeeName") String employeeName, @Param("start") LocalDate start, @Param("end") LocalDate end);
+
 	@Query("SELECT COUNT(DISTINCT e.employeeId) " + " FROM Attendances a JOIN a.attendanceEmployeeId e"
 			+ " WHERE a.attendanceEmployeeId.employeeId = :employeeId AND a.attendanceDate BETWEEN :start AND :end ")
-	long countByAttendanceEmployeeId_EmployeeIdAndAttendanceDateBetween(int employeeId, LocalDate start, LocalDate end);
+	long countByAttendanceEmployeeId_EmployeeIdAndAttendanceDateBetween(@Param("employeeId") int employeeId, @Param("start") LocalDate start, @Param("end") LocalDate end);
 
 	@Query("SELECT new com.pj.springboot.attendance.dto.AttendanceStatDTO(" + " e.employeeId, " + " e.name, "
 			+ " SUM(CASE WHEN a.attendanceStatus IN ('출근', '퇴근') THEN 1 END), "
@@ -93,8 +94,9 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 			+ " SUM(CASE WHEN a.attendanceStatus = '병가' THEN 1 END), "
 			+ " SUM(CASE WHEN a.attendanceStatus = '결근' THEN 1 END) "
 			+ " ) FROM Attendances a JOIN a.attendanceEmployeeId e "
-			+ " WHERE e.name LIKE :employeeName AND a.attendanceDate BETWEEN :start AND :end " + " GROUP BY e.employeeId, e.name ")
-	Page<AttendanceStatDTO> getStatsByAttendanceEmployeeId_NameLike(LocalDate start, LocalDate end, String employeeName,
+			+ " WHERE e.name LIKE :employeeName AND a.attendanceDate BETWEEN :start AND :end "
+			+ " GROUP BY e.employeeId, e.name ")
+	Page<AttendanceStatDTO> getStatsByAttendanceEmployeeId_NameLike(@Param("start") LocalDate start, @Param("end") LocalDate end, @Param("employeeName") String employeeName,
 			Pageable pageable);
 
 	@Query("SELECT new com.pj.springboot.attendance.dto.AttendanceStatDTO(" + " e.employeeId, " + " e.name, "
@@ -105,8 +107,9 @@ public interface AttendancesRepository extends JpaRepository<Attendances, Long> 
 			+ " SUM(CASE WHEN a.attendanceStatus = '병가' THEN 1 END), "
 			+ " SUM(CASE WHEN a.attendanceStatus = '결근' THEN 1 END) "
 			+ " ) FROM Attendances a JOIN a.attendanceEmployeeId e "
-			+ " WHERE e.employeeId = :employeeId AND a.attendanceDate BETWEEN :start AND :end " + " GROUP BY e.employeeId, e.name ")
-	Page<AttendanceStatDTO> getStatsByAttendanceEmployeeId_EmployeeId(LocalDate start, LocalDate end, int employeeId,
+			+ " WHERE e.employeeId = :employeeId AND a.attendanceDate BETWEEN :start AND :end "
+			+ " GROUP BY e.employeeId, e.name ")
+	Page<AttendanceStatDTO> getStatsByAttendanceEmployeeId_EmployeeId(@Param("start") LocalDate start, @Param("end") LocalDate end, @Param("employeeId")int employeeId,
 			Pageable pageable);
 
 }
