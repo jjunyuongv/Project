@@ -223,24 +223,24 @@ public class EmployeeController {
 
 	// 사원 데이터 개수
 	@GetMapping("/count")
-	public Long searchCount(@RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord) {
+	public Long searchCount(@RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord) {
 		return employeeService.count(searchField, searchWord);
 	}
 
 	// 사원 모든 정보 리스트
 	@GetMapping()
-	public ResponseEntity<List<FacilityEmployeeDTO>> list(@RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord, @RequestParam(defaultValue = "1") int page,
-			@RequestParam(defaultValue = "5") int size) {
+	public ResponseEntity<List<FacilityEmployeeDTO>> list(@RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord, @RequestParam(defaultValue = "1", name = "page") int page,
+			@RequestParam(defaultValue = "5", name = "size") int size) {
 		return ResponseEntity.ok(employeeService.getList(searchField, searchWord, page, size, "FULL"));
 	}
 
 	// modal창에서 보여줄 정보 리스트
 	@GetMapping("/modal")
-	public ResponseEntity<List<FacilityEmployeeDTO>> listModal(@RequestParam(required = false) String searchField,
-			@RequestParam(required = false) String searchWord, @RequestParam(defaultValue = "1") int page,
-			@RequestParam(defaultValue = "5") int size) {
+	public ResponseEntity<List<FacilityEmployeeDTO>> listModal(@RequestParam(required = false, name = "searchField") String searchField,
+			@RequestParam(required = false, name = "searchWord") String searchWord, @RequestParam(defaultValue = "1", name = "page") int page,
+			@RequestParam(defaultValue = "5", name = "size") int size) {
 		return ResponseEntity.ok(employeeService.getList(searchField, searchWord, page, size, "MODAL"));
 	}
 }
