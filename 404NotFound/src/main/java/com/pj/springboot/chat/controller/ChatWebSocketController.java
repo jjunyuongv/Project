@@ -35,7 +35,7 @@ public class ChatWebSocketController {
     }
 
     @MessageMapping("/rooms/{roomId}/send")
-    public void sendToRoom(@DestinationVariable Integer roomId,
+    public void sendToRoom(@DestinationVariable("roomId") Integer roomId,
                            @Payload WsSendMessage payload,
                            SimpMessageHeaderAccessor headers) {
 

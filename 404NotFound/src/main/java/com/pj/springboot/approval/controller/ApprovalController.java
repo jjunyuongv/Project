@@ -7,9 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-// ★ 추가: 403/400 응답 처리를 위해 import
-import org.springframework.http.HttpStatus; // ★ 추가
-import org.springframework.http.ResponseEntity; // ★ 추가
+import org.springframework.http.HttpStatus;                  // ★ 추가 유지
+import org.springframework.http.ResponseEntity;         // ★ 추가 유지
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -19,10 +18,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-// [reCAPTCHA] 헤더/쿼리 토큰도 허용할 수 있게 추가
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestParam; // ★ 사용
 import org.springframework.web.bind.annotation.RequestPart; // ★ NEW (멀티파트 파트 바인딩)
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;     // ★ NEW
@@ -44,18 +42,24 @@ public class ApprovalController {
         this.service = service;
     }
 
-    // 목록
+    /* =========================================================
+     * 목록: 상태 + 키워드(q) 검색
+     *  - page/size/status/q 모두 쿼리 파라미터
+     * ========================================================= */
     @GetMapping
-    public Page<ApprovalDto> list(@RequestParam(defaultValue = "0") int page,
-                                  @RequestParam(defaultValue = "10") int size,
-                                  @RequestParam(required = false) String status) {
+    public Page<ApprovalDto> list(
+            @RequestParam(name = "page",   defaultValue = "0")  int page,     // ★ name 명시
+            @RequestParam(name = "size",   defaultValue = "10") int size,     // ★ name 명시
+            @RequestParam(name = "status", required = false)    String status,
+            @RequestParam(name = "q",      required = false)    String q      // ★ NEW
+    ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "approvalDate"));
-        return service.listApprovals(status, pageable);
+        return service.listApprovals(status, q, pageable);                    // ★ 변경
     }
 
     // 상세 (헤더 없어도 조회 가능)
     @GetMapping("/{docId}")
-    public ApprovalDetailDto detail(@PathVariable String docId,
+    public ApprovalDetailDto detail(@PathVariable("docId") String docId,
                                     @RequestHeader(value = "X-Employee-Id", required = false) String eid) {
         Integer me = parseIntOrNull(eid);
         return service.getApproval(docId, me);
@@ -83,34 +87,30 @@ public class ApprovalController {
     // 수정 (작성자만 가능)
     // =========================
     @PutMapping("/{docId}")
-    public ResponseEntity<String> update(@PathVariable String docId,
+    public ResponseEntity<String> update(@PathVariable("docId") String docId,
                                          @RequestBody UpdateApprovalReq req,
-                                         @RequestHeader("X-Employee-Id") String eid) { // ★ 추가
-        int me = Integer.parseInt(eid); // ★ 추가: 로그인 사용자(사번)
+                                         @RequestHeader("X-Employee-Id") String eid) {
+        int me = Integer.parseInt(eid);
         try {
-            service.update(docId, me, req); // ★ 추가: 작성자 검증 포함 오버로드 호출
+            service.update(docId, me, req);
             return ResponseEntity.ok("수정 완료");
-        } catch (SecurityException se) { // ★ 추가: 작성자 아님
+        } catch (SecurityException se) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("글쓴이가 아닙니다.");
-        } catch (IllegalArgumentException iae) { // 문서 없음 등
+        } catch (IllegalArgumentException iae) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(iae.getMessage());
         }
     }
 
     /* ============================================================
-     * ★ NEW: 첨부 파일 교체 업로드 (수정 화면에서 새 파일 선택 시)
-     * - 한 문서당 단일 파일(ofile/sfile) 구조를 교체합니다.
-     * - 작성자만 가능, X-Employee-Id 헤더 필수
-     * - 프런트는 multipart/form-data 로 "file" 키를 사용
-     *   POST /api/approvals/{docId}/file
+     * 첨부 파일 교체 업로드
      * ============================================================ */
-    @PostMapping(path = "/{docId}/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // ★ NEW
-    public ResponseEntity<String> replaceFile(@PathVariable String docId,
+    @PostMapping(path = "/{docId}/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> replaceFile(@PathVariable("docId") String docId,
                                               @RequestPart("file") MultipartFile file,
                                               @RequestHeader("X-Employee-Id") String eid) {
         int me = Integer.parseInt(eid);
         try {
-            service.replaceFile(docId, me, file); // ★ NEW
+            service.replaceFile(docId, me, file);
             return ResponseEntity.ok("파일 교체 완료");
         } catch (SecurityException se) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("글쓴이가 아닙니다.");
@@ -121,7 +121,7 @@ public class ApprovalController {
 
     // 승인
     @PostMapping("/{docId}/approve")
-    public void approve(@PathVariable String docId,
+    public void approve(@PathVariable("docId") String docId,
                         @RequestBody(required = false) ApproveOrRejectReq body,
                         @RequestHeader("X-Employee-Id") String eid) {
         int me = Integer.parseInt(eid);
@@ -130,7 +130,7 @@ public class ApprovalController {
 
     // 반려
     @PostMapping("/{docId}/reject")
-    public void reject(@PathVariable String docId,
+    public void reject(@PathVariable("docId") String docId,
                        @RequestBody(required = false) ApproveOrRejectReq body,
                        @RequestHeader("X-Employee-Id") String eid) {
         int me = Integer.parseInt(eid);
@@ -140,8 +140,9 @@ public class ApprovalController {
     // 내 결재할 문서
     @GetMapping("/todo")
     public Page<ApprovalDto> myTodo(@RequestHeader("X-Employee-Id") String eid,
-                                    @RequestParam(defaultValue = "0") int page,
-                                    @RequestParam(defaultValue = "10") int size) {
+                                    @RequestParam(name = "page", defaultValue = "0")  int page,  // ★ name 명시
+                                    @RequestParam(name = "size", defaultValue = "10") int size   // ★ name 명시
+    ) {
         int me = Integer.parseInt(eid);
         Pageable pageable = PageRequest.of(page, size);
         return service.myTodo(me, pageable);
@@ -149,7 +150,7 @@ public class ApprovalController {
 
     // 삭제
     @DeleteMapping("/{docId}")
-    public void delete(@PathVariable String docId,
+    public void delete(@PathVariable("docId") String docId,
                        @RequestHeader(value = "X-Employee-Id", required = false) String eid) {
         Integer me = parseIntOrNull(eid);
         service.delete(docId, me);
@@ -157,7 +158,7 @@ public class ApprovalController {
 
     // 첨부 다운로드 (기존)
     @GetMapping("/{docId}/file")
-    public ResponseEntity<Resource> download(@PathVariable String docId) {
+    public ResponseEntity<Resource> download(@PathVariable("docId") String docId) {
         var file = service.getDownloadableFile(docId);
         if (file == null || file.resource() == null) {
             return ResponseEntity.notFound().build();

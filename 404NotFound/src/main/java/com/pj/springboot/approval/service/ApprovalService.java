@@ -73,11 +73,13 @@ public class ApprovalService {
 
     /* 목록 */
     @Transactional(readOnly = true)
-    public Page<ApprovalDto> listApprovals(String status, Pageable pageable) {
+    // ★ 변경: 검색어 q 추가
+    public Page<ApprovalDto> listApprovals(String status, String q, Pageable pageable) {
         ApprovalDoc.DocStatus parsed = parseStatus(status);
-        Page<ApprovalDoc> page = (parsed == null)
-                ? docRepo.findAll(pageable)
-                : docRepo.findByApprovalStatus(parsed, pageable);
+        String keyword = (q == null || q.isBlank()) ? null : q.trim();
+
+        // ★ 변경: 레포지토리의 search 사용 (status + 제목/내용 like)
+        Page<ApprovalDoc> page = docRepo.search(parsed, keyword, pageable);
 
         LocalDateTime threshold = LocalDateTime.now().minus(newBadgeDuration);
 

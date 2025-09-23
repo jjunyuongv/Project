@@ -41,8 +41,10 @@ public class ChatController {
        POST /api/chat/rooms/direct?userA=1001&userB=2002
        ---------------------------- */
     @PostMapping("/rooms/direct")
-    public ResponseEntity<DirectRoomResponse> direct(@RequestParam("userA") int userA,
-                                                     @RequestParam("userB") int userB) {
+    public ResponseEntity<DirectRoomResponse> direct(
+            @RequestParam(name = "userA") int userA,   // ★ name 명시
+            @RequestParam(name = "userB") int userB    // ★ name 명시
+    ) {
         ChatRoom r = directRoomService.getOrCreate(userA, userB);
 
         // 호출자가 userA(= me)라고 가정 → 상대는 userB
@@ -74,9 +76,8 @@ public class ChatController {
                     (req.name() == null || req.name().isBlank()) ? "그룹 채팅방" : req.name().trim(),
                     req.memberIds()
             );
-            // Map.of 에 null 넣으면 NPE → null 가능성 있는 값은 삼항으로 안전 처리
             String typeStr = room.getType() != null ? room.getType().name() : "GROUP";
-            LocalDateTime createdAt = room.getTime(); // JPA 가 null일 수도 있어도 OK(단, Map.of에 넣기 전 확인)
+            LocalDateTime createdAt = room.getTime();
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("roomId", room.getId());
             body.put("name", room.getName());
@@ -97,7 +98,7 @@ public class ChatController {
        반환: [{ roomId, peerId, peerName, name, type }]
        ---------------------------- */
     @GetMapping("/rooms/my")
-    public List<MyRoom> myRooms(@RequestParam("me") int me) {
+    public List<MyRoom> myRooms(@RequestParam(name = "me") int me) { // ★ name 명시
         var my = usersRepo.findAllByUser(me);
         List<MyRoom> out = new ArrayList<>(my.size());
         for (var cu : my) {
@@ -125,9 +126,11 @@ public class ChatController {
        POST /api/chat/messages?roomId=1&senderId=1001&content=안녕
        ---------------------------- */
     @PostMapping("/messages")
-    public ResponseEntity<?> send(@RequestParam Integer roomId,
-                                  @RequestParam Integer senderId,
-                                  @RequestParam String content) {
+    public ResponseEntity<?> send(
+            @RequestParam(name = "roomId") Integer roomId,     // ★ name 명시
+            @RequestParam(name = "senderId") Integer senderId, // ★ name 명시
+            @RequestParam(name = "content") String content     // ★ name 명시
+    ) {
         try {
             return ResponseEntity.ok(chatService.send(roomId, senderId, content));
         } catch (IllegalArgumentException ex) {
@@ -140,9 +143,11 @@ public class ChatController {
        GET /api/chat/rooms/{roomId}/messages?beforeId=&size=50
        ---------------------------- */
     @GetMapping("/rooms/{roomId}/messages")
-    public List<ChatMessage> history(@PathVariable Integer roomId,
-                                     @RequestParam(required = false) Integer beforeId,
-                                     @RequestParam(defaultValue = "50") Integer size) {
+    public List<ChatMessage> history(
+            @PathVariable(name = "roomId") Integer roomId,           // ★ name 명시
+            @RequestParam(name = "beforeId", required = false) Integer beforeId, // ★ name 명시
+            @RequestParam(name = "size", defaultValue = "50") Integer size       // ★ name 명시
+    ) {
         return chatService.history(roomId, beforeId, size);
     }
 
@@ -150,10 +155,11 @@ public class ChatController {
        6) 방 나가기
        ---------------------------- */
     @DeleteMapping("/rooms/{roomId}/leave")
-    public Map<String, Object> leave(@PathVariable Integer roomId,
-                                     @RequestParam int me) {
+    public Map<String, Object> leave(
+            @PathVariable(name = "roomId") Integer roomId, // ★ name 명시
+            @RequestParam(name = "me") int me              // ★ name 명시
+    ) {
         boolean roomRemoved = chatService.leaveRoom(roomId, me);
-        // Map.of 는 null 불가 → 불리언/상수만 사용
         return Map.of("left", true, "roomRemoved", roomRemoved);
     }
 
@@ -161,8 +167,10 @@ public class ChatController {
        7) 방 참여(방번호로 참가)
        ---------------------------- */
     @PostMapping("/rooms/{roomId}/join")
-    public Map<String, Object> join(@PathVariable Integer roomId,
-                                    @RequestParam("me") Integer me) {
+    public Map<String, Object> join(
+            @PathVariable(name = "roomId") Integer roomId,  // ★ name 명시
+            @RequestParam(name = "me") Integer me           // ★ name 명시 (기존 value → name 통일)
+    ) {
         groupRoomService.addMembers(roomId, List.of(me));
         return Map.of("joined", true);
     }
@@ -171,8 +179,10 @@ public class ChatController {
        8) 초대(다수 사용자 추가)
        ---------------------------- */
     @PostMapping("/rooms/{roomId}/invite")
-    public Map<String, Object> invite(@PathVariable Integer roomId,
-                                      @RequestBody InviteReq req) {
+    public Map<String, Object> invite(
+            @PathVariable(name = "roomId") Integer roomId,  // ★ name 명시
+            @RequestBody InviteReq req
+    ) {
         var ids = (req == null || req.memberIds() == null) ? List.<Integer>of() : req.memberIds();
         groupRoomService.addMembers(roomId, ids);
         return Map.of("invited", ids.size());
