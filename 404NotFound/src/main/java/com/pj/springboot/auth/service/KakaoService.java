@@ -27,6 +27,8 @@ public class KakaoService {
     @Value("${kakao.redirect-uri}")
     private String REDIRECT_URI;
 
+    private static int kakaoEmailCounter = 1;  
+
     public EmployeeDTO getUserInfo(String code) throws Exception {
         RestTemplate restTemplate = new RestTemplate();
 
@@ -65,7 +67,14 @@ public class KakaoService {
         Map<String, Object> kakaoAccount = (Map<String, Object>) kakaoUser.get("kakao_account");
         Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
 
-        String email = (String) kakaoAccount.get("email"); // null 가능
+        String email = (String) kakaoAccount.get("email"); // 이메일을 가져옵니다.
+        if (email == null) {
+            email = generateKakaoEmail();  // 이메일이 없으면 더미 이메일 생성
+        } else {
+            // 카카오 이메일이 null이 아니라면 중복된 이메일을 처리하기 위해 더미 이메일로 바꿔줍니다.
+            email = generateUniqueEmail(email);  // 이메일 중복 체크 및 유니크 이메일 생성
+        }
+
         String name = (String) profile.get("nickname");
         String kakaoId = String.valueOf(kakaoUser.get("id")); // 필수
 
@@ -76,8 +85,8 @@ public class KakaoService {
                     .employeeId(Integer.parseInt(employeeService.generateEmployeeId()))
                     .kakaoId(kakaoId)
                     .loginId("kakao_" + kakaoId)
-                    .name(name)      // 여기서 DB에 이름 저장
-                    .email(email != null ? email : "noemail@example.com")
+                    .name(name)      // 이름 저장
+                    .email(email)    // 이메일 저장
                     .password("")    
                     .createDate(LocalDateTime.now())
                     .role("USER")
@@ -94,4 +103,21 @@ public class KakaoService {
                 .role(user.getRole())
                 .build();
     }
+
+    // 유니크한 이메일을 생성하는 메서드
+    private String generateUniqueEmail(String kakaoEmail) {
+        String uniqueEmail = kakaoEmail;
+        while (employeeService.findByEmail(uniqueEmail) != null) {
+            uniqueEmail = generateKakaoEmail(); // 이메일 중복되면 새로 생성
+        }
+        return uniqueEmail;
+    }
+
+    // 카카오 이메일 생성 메서드 (홀수 이메일 생성)
+    private static String generateKakaoEmail() {
+        String email = "noemail" + (kakaoEmailCounter * 2 - 1) + "@example.com"; // 홀수 번호로 이메일 생성
+        kakaoEmailCounter++;  // 카운터 증가
+        return email;
+    }
 }
+
