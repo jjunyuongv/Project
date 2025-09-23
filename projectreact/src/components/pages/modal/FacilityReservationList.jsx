@@ -32,7 +32,7 @@ function FacilityReservationList(props) {
 
   const getData = async () => {
     const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId);
-    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "/page/1/" + pageSize);
+    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -41,7 +41,14 @@ function FacilityReservationList(props) {
   useEffect(function () {
     if (!props.isOpen)   // 닫힐땐 다시 리스트를 가져오지 않게 return 한다
       return;
-
+    setPrevSearch({
+      searchField: "reservationEmployeeName",
+      searchWord: ""
+    })
+    setFormData({
+      searchField: "reservationEmployeeName",
+      searchWord: ""
+    })
     getData();
 
   }, [props.isOpen]);
@@ -49,8 +56,8 @@ function FacilityReservationList(props) {
   const searchData = async (e) => {
     e.preventDefault();
     setPrevSearch({ searchField: formData.searchField, searchWord: formData.searchWord });
-    const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId + "/" + formData.searchField + "/" + formData.searchWord);
-    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "/" + formData.searchField + "/" + formData.searchWord + "/page/1/" + pageSize);
+    const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     searchChange = true;
@@ -97,12 +104,12 @@ function FacilityReservationList(props) {
     if (prevSearch.searchWord !== "") {
       // 다른 검색을 하였을때 
       if ((prevSearch.searchField !== formData.searchField || prevSearch.searchWord !== formData.searchWord) && searchChange) {
-        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "/" + formData.searchField + "/" + formData.searchWord + "/page/" + page + "/" + size);
+        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
       } else {
-        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "/" + prevSearch.searchField + "/" + prevSearch.searchWord + "/page/" + page + "/" + size);
+        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
       }
     } else {
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "/page/" + page + "/" + size);
+      response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=" + page + "&size=" + size);
     }
     searchChange = false;
     setRespData(response.data);
@@ -122,7 +129,7 @@ function FacilityReservationList(props) {
           <h2>{props.parentData.reservationFacilityName}</h2>
           <form onSubmit={searchData} method="post">
             <InputGroup>
-              <Form.Control as="select" name="searchField" id="searchField" defaultValue={formData.searchField} required onChange={formDataHandler}>
+              <Form.Control as="select" name="searchField" id="searchField" value={formData.searchField} required onChange={formDataHandler}>
                 <option value="reservationEmployeeName">예약자</option>
               </Form.Control>
               <Form.Control className="w-25" type="text" name="searchWord" id="searchWord" value={formData.searchWord} placeholder="입력..." onChange={formDataHandler} />
@@ -150,7 +157,7 @@ function FacilityReservationList(props) {
                 <th style={{ width: 90 }}>시작일시</th>
                 <th style={{ width: 90 }}>종료일시</th>
                 <th style={{ width: 120 }}>예약자</th>
-                <th className="w-10">예약상황</th>
+                <th className="w-15">예약상황</th>
               </tr>
             </thead>
             <tbody>

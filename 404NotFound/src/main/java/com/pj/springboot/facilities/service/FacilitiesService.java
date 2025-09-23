@@ -27,83 +27,51 @@ public class FacilitiesService {
 
 	@Autowired
 	EmployeeRepository employeeRepository;
-	
+
 	@Autowired
 	FacilityReservationsRepository facilityReservationsRepository;
 
 	// entity로 가져와 dto로 변환
-	public List<FacilitiesDTO> getList() {
-		List<Facilities> entityList = facilitiesRepository.findAll();
-		List<FacilitiesDTO> list = new ArrayList<>();
-		for (Facilities facilities : entityList) {
-			list.add(new FacilitiesDTO(facilities));
-		}
-		return list;
-	}
-
-	public List<FacilitiesDTO> getListSearch(String searchField, String searchWord) {
-		List<Facilities> entityList = null;
-		switch (searchField) {
-		case "facilityName":
-			entityList = facilitiesRepository.findByFacilityNameLike("%" + searchWord + "%");
-			break;
-		case "facilityType":
-			entityList = facilitiesRepository.findByFacilityTypeLike("%" + searchWord + "%");
-			break;
-		}
-		List<FacilitiesDTO> list = new ArrayList<>();
-		for (Facilities facilities : entityList) {
-			list.add(new FacilitiesDTO(facilities));
-		}
-
-		return list;
-	}
-
-	public Long count() {
-		return facilitiesRepository.count();
-	}
-
-	public Long count(String searchField, String searchWord) {
-		switch (searchField) {
-		case "facilityName":
-			return facilitiesRepository.countByFacilityNameLike("%" + searchWord + "%");
-		case "facilityType":
-			return facilitiesRepository.countByFacilityTypeLike("%" + searchWord + "%");
-		}
-
-		return (long) 0;
-	}
-
-	public List<FacilitiesDTO> getListWithPaging(int page, int size) {
-		Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "facilityId"));
-		Page<Facilities> entityList = facilitiesRepository.findAll(pageable);
-		List<FacilitiesDTO> list = new ArrayList<>();
-		for (Facilities entity : entityList) {
-			list.add(new FacilitiesDTO(entity));
-		}
-
-		return list;
-	}
-
-	public List<FacilitiesDTO> getListSearchWithPaging(String searchField, String searchWord, int page, int size) {
+	public List<FacilitiesDTO> getList(int page, int size, String searchField, String searchWord) {
 		Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "facilityId"));
 		Page<Facilities> entityList = Page.empty();
 
-		switch (searchField) {
-		case "facilityName":
-			entityList = facilitiesRepository.findByFacilityNameLike("%" + searchWord + "%", pageable);
-			break;
-		case "facilityType":
-			entityList = facilitiesRepository.findByFacilityTypeLike("%" + searchWord + "%", pageable);
-			break;
+		if (searchWord == null || searchWord.trim().isEmpty()) {
+			entityList = facilitiesRepository.findAll(pageable);
+		} else {
+			switch (searchField) {
+			case "facilityName":
+				entityList = facilitiesRepository.findByFacilityNameLike("%" + searchWord + "%", pageable);
+				break;
+			case "facilityType":
+				entityList = facilitiesRepository.findByFacilityTypeLike("%" + searchWord + "%", pageable);
+				break;
+			default:
+				entityList = facilitiesRepository.findAll(pageable);
+				break;
+			}
 		}
 
 		List<FacilitiesDTO> list = new ArrayList<>();
-		for (Facilities entity : entityList) {
-			list.add(new FacilitiesDTO(entity));
+		for (Facilities facilities : entityList) {
+			list.add(new FacilitiesDTO(facilities));
 		}
-
 		return list;
+	}
+
+	public Long count(String searchField, String searchWord) {
+		if (searchWord == null || searchWord.trim().isEmpty()) {
+			return facilitiesRepository.count();
+		} else {
+			switch (searchField) {
+			case "facilityName":
+				return facilitiesRepository.countByFacilityNameLike("%" + searchWord + "%");
+			case "facilityType":
+				return facilitiesRepository.countByFacilityTypeLike("%" + searchWord + "%");
+			default:
+				return facilitiesRepository.count();
+			}
+		}
 	}
 
 	public int insertFacilities(FacilitiesDTO dto) {
@@ -138,7 +106,7 @@ public class FacilitiesService {
 	public int delete(int facilityId) {
 		// 해당 시설의 예약 삭제
 		List<FacilityReservations> entityList = facilityReservationsRepository.findByFacilityId(facilityId);
-		for(FacilityReservations entity : entityList) {
+		for (FacilityReservations entity : entityList) {
 			facilityReservationsRepository.delete(entity);
 		}
 		// 시설물 삭제

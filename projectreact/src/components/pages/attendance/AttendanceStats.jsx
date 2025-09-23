@@ -36,15 +36,15 @@ function AttendanceStats(props) {
   const getData = async () => {
     let response = [];
     let countResp = [];
-    let dataUrl = props.baseUrl + "/api/attendances";
+    let dataUrl = props.baseUrl + "/api/attendances/stat";
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
-      countResp = await axios.get(dataUrl + "/count/month/" + month + "/" + searchField + "/" + searchWord);
-      response = await axios.get(dataUrl + "/month/" + month + "/" + searchField + "/" + searchWord + "/page/" + page + "/" + pageSize);
+      countResp = await axios.get(dataUrl + "/count?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord);
+      response = await axios.get(dataUrl + "?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
     } else {
       setFormData({ searchField: "employeeName", searchWord: "" });
-      countResp = await axios.get(dataUrl + "/count/month/" + month);
-      response = await axios.get(dataUrl + "/month/" + month + "/page/" + page + "/" + pageSize);
+      countResp = await axios.get(dataUrl + "/count?month=" + month);
+      response = await axios.get(dataUrl + "?month=" + month + "&page=" + page + "&size" + pageSize);
     }
 
     setCount(countResp.data);

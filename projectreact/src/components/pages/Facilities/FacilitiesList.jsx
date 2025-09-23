@@ -79,12 +79,12 @@ function FacilitiesList(props) {
     let countResp = []
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
-      countResp = await axios.get(props.baseUrl + "/api/facilities/count/" + searchField + "/" + searchWord);
-      response = await axios.get(props.baseUrl + "/api/facilities/" + searchField + "/" + searchWord + "/page/" + page + "/" + pageSize);
+      countResp = await axios.get(props.baseUrl + "/api/facilities/count?searchField=" + searchField + "&searchWord" + searchWord);
+      response = await axios.get(props.baseUrl + "/api/facilities?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
     } else {
       setFormData({ searchField: "facilityName", searchWord: "" });
       countResp = await axios.get(props.baseUrl + "/api/facilities/count");
-      response = await axios.get(props.baseUrl + "/api/facilities/page/" + page + "/" + pageSize);
+      response = await axios.get(props.baseUrl + "/api/facilities?page=" + page + "&size=" + pageSize);
     }
     setCount(countResp.data);
     setRespData(response.data);
@@ -204,7 +204,7 @@ function FacilitiesList(props) {
           {/* 검색하기 */}
           <form onSubmit={searchData} method="post">
             <InputGroup>
-              <Form.Control as="select" className="w-10" name="searchField" id="searchField" defaultValue={formData.searchField} required onChange={formDataHandler}>
+              <Form.Control as="select" className="w-10" name="searchField" id="searchField" value={formData.searchField} required onChange={formDataHandler}>
                 <option value="facilityName">시설명</option>
                 <option value="facilityType">종류</option>
               </Form.Control>

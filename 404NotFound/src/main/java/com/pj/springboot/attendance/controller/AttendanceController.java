@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pj.springboot.attendance.dto.AttendanceDTO;
@@ -67,94 +68,40 @@ public class AttendanceController {
 		return attendancesService.getOne(employeeId);
 	}
 
-	// 페이징된 리스트
-	@GetMapping("/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceDTO>> listWithPaging(@PathVariable int page, @PathVariable int size) {
-		return ResponseEntity.ok(attendancesService.getListWithPaging(null, page, size));
+	// 근태 정보 얻기
+	@GetMapping()
+	public ResponseEntity<List<AttendanceDTO>> listWithPaging(@RequestParam(required = false) LocalDate date,
+			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "5") int size,
+			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord) {
+		return ResponseEntity.ok(attendancesService.getList(date, page, size, searchField, searchWord));
 	}
 
-	// 검색 후 페이징된 리스트
-	@GetMapping("/{searchField}/{searchWord}/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceDTO>> listSearchWithPaging(@PathVariable String searchField,
-			@PathVariable String searchWord, @PathVariable int page, @PathVariable int size) {
-		return ResponseEntity.ok(attendancesService.getListSearchWithPaging(null, searchField, searchWord, page, size));
-	}
-
-	// 페이징된 리스트
-	@GetMapping("/{date}/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceDTO>> listWithPagingAndDate(@PathVariable LocalDate date,
-			@PathVariable int page, @PathVariable int size) {
-		return ResponseEntity.ok(attendancesService.getListWithPaging(date, page, size));
-	}
-
-	// 검색 후 페이징된 리스트
-	@GetMapping("/{date}/{searchField}/{searchWord}/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceDTO>> listSearchWithPagingAndDate(@PathVariable LocalDate date,
-			@PathVariable String searchField, @PathVariable String searchWord, @PathVariable int page,
-			@PathVariable int size) {
-		return ResponseEntity.ok(attendancesService.getListSearchWithPaging(date, searchField, searchWord, page, size));
-	}
-
-	// 검색 결과 개수
-	@GetMapping("/count/{searchField}/{searchWord}")
-	public Long searchCount(@PathVariable String searchField, @PathVariable String searchWord) {
-		return attendancesService.count(null, searchField, searchWord);
-	}
-
-	// 전체 개수
+	// 근태 정보 개수
 	@GetMapping("/count")
-	public Long count() {
-		return attendancesService.count(null);
-	}
-
-	// 검색 결과 개수 특정 날짜
-	@GetMapping("/count/{date}/{searchField}/{searchWord}")
-	public Long searchCountWithDate(@PathVariable LocalDate date, @PathVariable String searchField,
-			@PathVariable String searchWord) {
+	public Long searchCountWithDate(@RequestParam(required = false) LocalDate date,
+			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord) {
 		return attendancesService.count(date, searchField, searchWord);
-	}
-
-	// 날짜 검색 개수
-	@GetMapping("/count/{date}")
-	public Long countWithDate(@PathVariable LocalDate date) {
-		return attendancesService.count(date);
 	}
 
 	//////////////////////////
 
-	// 사원별 근태 월별 통계 개수
-	@GetMapping("/count/month/{month}")
-	public Long countWithMonth(@PathVariable String month) {
-		LocalDate start = LocalDate.parse(month + "-01");
-		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-		return attendancesService.getStatCount(start, end);
-	}
-
-	// 검색 결과 개수 특정 날짜
-	@GetMapping("/count/month/{month}/{searchField}/{searchWord}")
-	public Long searchCountWithMonth(@PathVariable String month, @PathVariable String searchField,
-			@PathVariable String searchWord) {
+	// 월별 근태 통계 개수
+	@GetMapping("/stat/count")
+	public Long searchCountWithMonth(@RequestParam String month, @RequestParam(required = false) String searchField,
+			@RequestParam(required = false) String searchWord) {
 		LocalDate start = LocalDate.parse(month + "-01");
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
 		return attendancesService.getStatCount(start, end, searchField, searchWord);
 	}
 
-	// 사원별 검색 근태 월별 통계
-	@GetMapping("/month/{month}/{searchField}/{searchWord}/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceStatDTO>> listSearchWithMonthAndPaging(@PathVariable String month,
-			@PathVariable String searchField, @PathVariable String searchWord, @PathVariable int page,
-			@PathVariable int size) {
-		LocalDate start = LocalDate.parse(month + "-01");
-		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-		return ResponseEntity.ok(attendancesService.getListSearchWithPage(start, end, searchField, searchWord, page, size));
-	}
-
 	// 사원별 근태 월별 통계
-	@GetMapping("/month/{month}/page/{page}/{size}")
-	public ResponseEntity<List<AttendanceStatDTO>> listWithMonthAndPaging(@PathVariable String month,
-			@PathVariable int page, @PathVariable int size) {
+	@GetMapping("/stat")
+	public ResponseEntity<List<AttendanceStatDTO>> listSearchWithMonthAndPaging(@RequestParam String month,
+			@RequestParam(required = false) String searchField, @RequestParam(required = false) String searchWord, @RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "5") int size) {
 		LocalDate start = LocalDate.parse(month + "-01");
 		LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-		return ResponseEntity.ok(attendancesService.getStatsWithPage(start, end, page, size));
+		return ResponseEntity
+				.ok(attendancesService.getStatList(start, end, searchField, searchWord, page, size));
 	}
 }

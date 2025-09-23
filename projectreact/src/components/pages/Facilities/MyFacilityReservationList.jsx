@@ -51,9 +51,8 @@ function MyFacilityReservationList(props) {
   const getData = async () => {
     let response = [];
     let countResp = []
-    countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/reservationEmployeeId/" + employeeId + "");
-    // 나중에 id부분 바꿀것 로그인한 유저로
-    response = await axios.get(props.baseUrl + "/api/facilityReservations/reservationEmployeeId/" + employeeId + "/page/" + page + "/" + pageSize);
+    countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count?searchField=reservationEmployeeId&searchWord=" + employeeId);
+    response = await axios.get(props.baseUrl + "/api/facilityReservations?searchField=reservationEmployeeId&searchWord=" + employeeId + "&page=" + page + "&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -152,7 +151,7 @@ function MyFacilityReservationList(props) {
           <thead>
             <tr>
               <th className="w-15">작성일</th>
-              <th className="w-10">시설명</th>
+              <th className="w-15">시설명</th>
               <th className="w-10">예약자</th>
               <th className="w-15">시작일시</th>
               <th className="w-15">종료일시</th>

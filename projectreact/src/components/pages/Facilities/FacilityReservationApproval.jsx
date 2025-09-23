@@ -59,12 +59,12 @@ function FacilityReservationApproval(props) {
     let countResp = []
     if (searchField && searchWord) {
       setFormData({ searchField: formData.searchField, searchWord: formData.searchWord });
-      countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count/" + searchField + "/" + searchWord);
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval/" + searchField + "/" + searchWord + "/page/" + page + "/" + pageSize);
+      countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count?searchField=" + searchField + "&searchWord=" + searchWord);
+      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size" + pageSize);
     } else {
       setFormData({ searchField: "reservationEmployeeName", searchWord: "" });
       countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count");
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval/page/" + page + "/" + pageSize);
+      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?page=" + page + "&size=" + pageSize);
     }
     setCount(countResp.data);
     setRespData(response.data);
@@ -205,7 +205,7 @@ function FacilityReservationApproval(props) {
           {/* 검색하기 */}
           <form onSubmit={searchData} method="post">
             <InputGroup>
-              <Form.Control as="select" className="w-10" name="searchField" id="searchField" defaultValue={formData.searchField} required onChange={formDataHandler}>
+              <Form.Control as="select" className="w-10" name="searchField" id="searchField" value={formData.searchField} required onChange={formDataHandler}>
                 <option value="reservationEmployeeName">예약자</option>
               </Form.Control>
               <Form.Control className="w-50" type="text" name="searchWord" id="searchWord" placeholder="입력..." value={formData.searchWord} required onChange={formDataHandler} />
@@ -228,11 +228,11 @@ function FacilityReservationApproval(props) {
           <thead>
             <tr>
               <th className="w-15">작성일</th>
-              <th className="w-10">시설물명</th>
+              <th className="w-15">시설물명</th>
               <th className="w-10">예약자</th>
               <th className="w-15">시작일시</th>
               <th className="w-15">종료일시</th>
-              <th className="w-10">상태</th>
+              <th className="w-5">상태</th>
               <th className="w-15">결재</th>
               <th className="w-10">예약상황</th>
             </tr>

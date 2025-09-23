@@ -38,7 +38,7 @@ function EmpModal(props) {
 
   const getData = async () => {
     const countResp = await axios.get(props.baseUrl + "/api/employees/count")
-    const response = await axios.get(props.baseUrl + "/api/employees/page/1/" + pageSize);
+    const response = await axios.get(props.baseUrl + "/api/employees?page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -60,8 +60,8 @@ function EmpModal(props) {
       return;
     }
     setPrevSearch({ searchField: formData.searchField, searchWord: formData.searchWord });
-    const countResp = await axios.get(props.baseUrl + "/api/employees/count/" + formData.searchField + "/" + formData.searchWord);
-    const response = await axios.get(props.baseUrl + "/api/employees/" + formData.searchField + "/" + formData.searchWord + "/page/1/" + pageSize);
+    const countResp = await axios.get(props.baseUrl + "/api/employees/count?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+    const response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     searchChange = true;
@@ -89,6 +89,12 @@ function EmpModal(props) {
         </tr>
       );
     });
+    if (trData.length === 0) {
+      trData.push(
+        <tr key={"noData"}>
+          <td colSpan={3}>결과가 없습니다.</td>
+        </tr>);
+    }
   };
 
   const movePage = async (e, page, size) => {
@@ -97,12 +103,12 @@ function EmpModal(props) {
     if (prevSearch.searchWord !== "") {
       // 다른 검색을 하였을때 
       if ((prevSearch.searchField !== formData.searchField || prevSearch.searchWord !== formData.searchWord) && searchChange) {
-        response = await axios.get(props.baseUrl + "/api/employees/" + formData.searchField + "/" + formData.searchWord + "/page/" + page + "/" + size);
+        response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
       } else {
-        response = await axios.get(props.baseUrl + "/api/employees/" + prevSearch.searchField + "/" + prevSearch.searchWord + "/page/" + page + "/" + size);
+        response = await axios.get(props.baseUrl + "/api/employees?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
       }
     } else {
-      response = await axios.get(props.baseUrl + "/api/employees/page/" + page + "/" + size);
+      response = await axios.get(props.baseUrl + "/api/employees?page=" + page + "&size=" + size);
     }
     searchChange = false;
     setRespData(response.data);
@@ -120,7 +126,7 @@ function EmpModal(props) {
           {/* 검색하기 */}
           <form onSubmit={searchData} method="post">
             <InputGroup>
-              <Form.Control as="select" name="searchField" id="searchField" defaultValue={"empName"} required onChange={formDataHandler}>
+              <Form.Control as="select" name="searchField" id="searchField" value={formData.searchField} required onChange={formDataHandler}>
                 <option value="employeeName">이름</option>
               </Form.Control>
               <Form.Control className="w-25" type="text" name="searchWord" id="searchWord" value={formData.searchWord} placeholder="입력..." onChange={formDataHandler} required />

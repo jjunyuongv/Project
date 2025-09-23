@@ -71,37 +71,32 @@ function AttendanceList(props) {
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
       if (date !== undefined) {
-        countResp = await axios.get(countUrl + "/" + date + "/" + searchField + "/" + searchWord);
-        response = await axios.get(dataUrl + "/" + date + "/" + searchField + "/" + searchWord + "/page/" + page + "/" + pageSize);
+        countResp = await axios.get(countUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord);
+        response = await axios.get(dataUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
       } else {
-        countResp = await axios.get(countUrl + "/" + searchField + "/" + searchWord);
-        response = await axios.get(dataUrl + "/" + searchField + "/" + searchWord + "/page/" + page + "/" + pageSize);
+        countResp = await axios.get(countUrl + "?searchField=" + searchField + "&searchWord=" + searchWord);
+        response = await axios.get(dataUrl + "?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
       }
     } else {
       setFormData({ searchField: "employeeName", searchWord: "" });
       if (date !== undefined) {
-        countResp = await axios.get(countUrl + "/" + date);
-        response = await axios.get(dataUrl + "/" + date + "/page/" + page + "/" + pageSize);
+        countResp = await axios.get(countUrl + "?date=" + date);
+        response = await axios.get(dataUrl + "?date=" + date + "&page=" + page + "&size=" + pageSize);
       } else {
         countResp = await axios.get(countUrl);
-        response = await axios.get(dataUrl + "/page/" + page + "/" + pageSize);
+        response = await axios.get(dataUrl + "?page=" + page + "&size=" + pageSize);
       }
     }
 
+    // 출근시각 퇴근 시각 여부로 출근/퇴근 버튼 비활성화
     if (isLoggedIn) {
       curEmp = await axios.get(dataUrl + "/" + user.employeeId);
-      if (curEmp.data !== "") {
-        switch (curEmp.data.attendanceStatus) {
-          case "결근":
-            setEmpState(0);
-            break;
-          case "출근", "지각":
-            setEmpState(1);
-            break;
-          case "퇴근", "조퇴":
-            setEmpState(2);
-            break;
-        }
+      if (curEmp.data.attendanceStart === null) {
+        setEmpState(0);
+      } else if(curEmp.data.attendanceEnd === null){
+        setEmpState(1);
+      } else{
+        setEmpState(2);
       }
     }
     setCount(countResp.data);
@@ -148,7 +143,7 @@ function AttendanceList(props) {
     response = await axios.post(dataUrl);
     if (response.data === 1) {
       getData();
-    } else{
+    } else {
       getData();
       alert("오류 발생");
     }

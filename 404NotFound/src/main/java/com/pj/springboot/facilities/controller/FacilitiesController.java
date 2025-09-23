@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pj.springboot.facilities.dto.FacilitiesDTO;
@@ -20,7 +21,7 @@ import com.pj.springboot.facilities.service.FacilitiesService;
 public class FacilitiesController {
 	@Autowired
 	FacilitiesService facilitiesService;
-	
+
 	// 작성
 	@PostMapping()
 	public int insert(@RequestBody FacilitiesDTO dto) {
@@ -30,13 +31,13 @@ public class FacilitiesController {
 			return -1;
 		}
 	}
-	
+
 	// id에 해당하는 시설물 가져오기
 	@GetMapping("/{facilityId}")
 	public FacilitiesDTO getOne(@PathVariable int facilityId) {
 		return facilitiesService.getOne(facilityId);
 	}
-	
+
 	// id에 해당하는 시설물 정보 수정
 	@PostMapping("/{facilityId}")
 	public int update(@PathVariable int facilityId, @RequestBody FacilitiesDTO dto) {
@@ -46,7 +47,7 @@ public class FacilitiesController {
 			return -1;
 		}
 	}
-	
+
 	// id에 해당하는 시설물 삭제
 	@DeleteMapping("/{facilityId}")
 	public int delete(@PathVariable int facilityId) {
@@ -56,42 +57,19 @@ public class FacilitiesController {
 			return -1;
 		}
 	}
-	
+
 	// 전체 리스트
 	@GetMapping()
-	public ResponseEntity<List<FacilitiesDTO>> list() {
-		return ResponseEntity.ok(facilitiesService.getList());
+	public ResponseEntity<List<FacilitiesDTO>> list(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "5") int size, @RequestParam(required = false) String searchField,
+			@RequestParam(required = false) String searchWord) {
+		return ResponseEntity.ok(facilitiesService.getList(page, size, searchField, searchWord));
 	}
 
-	// 검색 리스트
-	@GetMapping("/{searchField}/{searchWord}")
-	public ResponseEntity<List<FacilitiesDTO>> listSearch(@PathVariable String searchField,
-			@PathVariable String searchWord) {
-		List<FacilitiesDTO> list = facilitiesService.getListSearch(searchField, searchWord);
-		return ResponseEntity.ok(list);
-	}
-
-	// 페이징된 리스트
-	@GetMapping("/page/{page}/{size}")
-	public ResponseEntity<List<FacilitiesDTO>> listWithPaging(@PathVariable int page, @PathVariable int size) {
-		return ResponseEntity.ok(facilitiesService.getListWithPaging(page, size));
-	}
-
-	// 검색 결과 개수
-	@GetMapping("/count/{searchField}/{searchWord}")
-	public Long searchCount(@PathVariable String searchField, @PathVariable String searchWord) {
-		return facilitiesService.count(searchField, searchWord);
-	}
-
-	// 검색 후 페이징된 리스트
-	@GetMapping("/{searchField}/{searchWord}/page/{page}/{size}")
-	public ResponseEntity<List<FacilitiesDTO>> listSearchWithPaging(@PathVariable String searchField,
-			@PathVariable String searchWord, @PathVariable int page, @PathVariable int size) {
-		return ResponseEntity.ok(facilitiesService.getListSearchWithPaging(searchField, searchWord, page, size));
-	}
-
+	// 전체 개수
 	@GetMapping("/count")
-	public Long count() {
-		return facilitiesService.count();
+	public Long count(@RequestParam(required = false) String searchField,
+			@RequestParam(required = false) String searchWord) {
+		return facilitiesService.count(searchField, searchWord);
 	}
 }
