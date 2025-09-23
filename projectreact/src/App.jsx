@@ -20,7 +20,7 @@ import MyPage from "./components/pages/LoginForm/MyPage";
 
 // 캘린더 / 채팅 / 위치
 import CalendarPage from "./components/pages/calendars/CalendarsPage";
-import ChatMain from "./components/pages/chatfrom/chatmain";
+import ChatMain from "./components/pages/chatfrom/ChatMain";
 import LocationMain from "./components/pages/Location/LocationMain";
 
 // 결재
