@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { Button, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import ModalController from "../modal/ModalController";
-//import axios from "axios";
+import axios from "axios";
 import { useAuth } from "../LoginForm/AuthContext";
-import api from "../../../api/axios";
 
 
 function FacilitiesEdit(props) {
@@ -12,6 +11,7 @@ function FacilitiesEdit(props) {
   // const [respData, setRespData] = useState();
   const [isEndLoading, setIsEndLoading] = useState(false);
   const { facilityId } = useParams();
+  const [address, setAddress] = useState("");
   const [formData, setFormData] = useState({
     facilityName: "",
     facilityType: "",
@@ -40,8 +40,7 @@ function FacilitiesEdit(props) {
 
   const getData = async () => {
     let response = [];
-    /* response = await axios.get(props.baseUrl + "/api/facilities/" + facilityId); */
-    response = await api.get("/facilities/" + facilityId);
+    response = await axios.get(props.baseUrl + "/api/facilities/" + facilityId);
     let data = response.data;
     formData.facilityName = data.facilityName;
     formData.facilityType = data.facilityType;
@@ -49,8 +48,9 @@ function FacilitiesEdit(props) {
     formData.facilityStatus = data.facilityStatus;
     formData.facilityManagerId = data.facilityManagerId;
     modalData.employeeId = data.facilityManagerId;
+    formData.facilityLocation = data.facilityLocation;
     modalData.employeeName = data.facilityManagerName;
-
+    setAddress(data.facilityLocation);
     setIsEndLoading(true);
   }
 
@@ -67,15 +67,13 @@ function FacilitiesEdit(props) {
   const submitData = async (e) => {
     e.preventDefault();
     formData.facilityManagerId = modalData.employeeId;
-    console.log(formData);
+    formData.facilityLocation = address;
     if (modalData.employeeId === "") {
       alert("담당 사원을 선택해주세요.");
       return;
     }
 
-    // let response = await axios.post(props.baseUrl + "/api/facilities/" + facilityId, formData);
-    let response = await api.post("/facilities/" + facilityId, formData);
-
+    let response = await axios.post(props.baseUrl + "/api/facilities/" + facilityId, formData);
     // 입력 성공
     if (response.data === 1) {
       alert("시설물 수정 성공!");
@@ -120,6 +118,15 @@ function FacilitiesEdit(props) {
     </div>
   }
 
+  // daum 주소
+  function daumAPI() {
+    new window.daum.Postcode({
+      oncomplete: function (data) {
+        setAddress(data.address);
+      }
+    }).open();
+  }
+
   return (<>
     <div className="boardpage">
       <div className="hero">
@@ -151,7 +158,7 @@ function FacilitiesEdit(props) {
           <Row className="mb-3">
             <Col>
               <strong>시설위치</strong>
-              <Form.Control name="facilityLocation" placeholder="위치 입력..." value={formData.facilityLocation} onChange={formDataHandler} />
+              <Form.Control name="facilityLocation" defaultValue={formData.facilityLocaion} value={address} placeholder="위치 입력..." onClick={daumAPI} onChange={formDataHandler} readOnly required />
             </Col>
           </Row>
           <Row className="mb-3">
