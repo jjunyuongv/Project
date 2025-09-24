@@ -42,13 +42,12 @@ public class CalendarController {
         return calendarService.findAllByDateRange(start, end);
     }
 
-    // ★ NEW: mine=true 쿼리로 "내 일정만" 조회 (헤더 X-Employee-Id 필요)
+    // mine=true → "내 일정만" (교대 포함 옵션 제거)
     @GetMapping(params = "mine=true")
     public List<CalendarDTO> getMyCalendars(
-            @RequestHeader("X-Employee-Id") Integer employeeId,                 // ★ NEW
-            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start, // ★ NEW
-            @RequestParam("end")   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,   // ★ NEW
-            @RequestParam(value = "includeShift", defaultValue = "false") boolean includeShift     // ★ NEW (옵션)
+            @RequestHeader("X-Employee-Id") Integer employeeId,
+            @RequestParam("start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam("end")   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
     ) {
         if (start == null || end == null) {
             throw new IllegalArgumentException("start/end는 필수입니다.");
@@ -56,7 +55,7 @@ public class CalendarController {
         if (start.isAfter(end)) {
             throw new IllegalArgumentException("start가 end 이후일 수 없습니다.");
         }
-        return calendarService.findMineByDateRange(employeeId, start, end, includeShift); // ★ NEW
+        return calendarService.findMineByDateRange(employeeId, start, end);
     }
 
     @PostMapping("/events")

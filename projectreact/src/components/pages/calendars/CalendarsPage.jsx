@@ -14,16 +14,15 @@ import {
   createEvent as apiCreateEvent,
   updateEvent as apiUpdateEvent,
   deleteEvent as apiDeleteEvent,
-  getMyEvents as apiGetMyEvents, // ★ NEW
+  getMyEvents as apiGetMyEvents,
 } from "../../../api/calendar.api.js";
 
-// ★ NEW: 로그인 컨텍스트에서 로그인 유저 정보 가져오기
-import { useAuth } from "../LoginForm/AuthContext.jsx"; // ★ NEW
+import { useAuth } from "../LoginForm/AuthContext.jsx";
 
 import "./calendars.css";
 
 const CATEGORY_LIST = ["개인일정", "비행일정", "정비일정", "교육일정", "휴가일정"];
-const CREW_EMPLOYEE_ID = 1; // TODO: 실제 로그인 사용자 ID로 치환
+const CREW_EMPLOYEE_ID = 1;
 
 /** Date|string -> 'YYYY-MM-DD' */
 const toYMD = (input) => {
@@ -39,9 +38,8 @@ export default function CalendarsPage() {
   const fcRef = useRef(null);
   const shiftCtrlRef = useRef(null);
 
-  // ★ NEW: AuthContext에서 me(user) 꺼내고, employeeId를 안전하게 추출
-  const { user } = useAuth() || {};                                     // ★ NEW
-  const EMP_ID = user?.employeeId ?? CREW_EMPLOYEE_ID;                   // ★ NEW (로그인 없으면 기존 상수로 대체)
+  const { user } = useAuth() || {};
+  const EMP_ID = user?.employeeId ?? CREW_EMPLOYEE_ID;
 
   const [calendarType, setCalendarType] = useState("일반"); // '일반' | '교대'
   const [viewType, setViewType] = useState("dayGridMonth");
@@ -51,20 +49,19 @@ export default function CalendarsPage() {
   const [titleYM, setTitleYM] = useState("");
   const [shiftTitle, setShiftTitle] = useState("");
 
-  // ★ NEW: "내 일정만" 토글 및 교대 포함 옵션
-  const [showMine, setShowMine] = useState(false);      // 기본값 false로 기존 동작 보존
-  const [includeShift, setIncludeShift] = useState(false); // mine일 때 교대 포함 여부
+  // "내 일정만" 토글만 유지 (교대 포함 제거)
+  const [showMine, setShowMine] = useState(false);
 
-  // 현재 조회 범위 (재조회용)
+  // 현재 조회 범위
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
 
   // 모달 상태
   const [detailOpen, setDetailOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false); // 생성/수정 공용
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState("create"); // 'create' | 'edit'
   const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD'
-  const [initialForEdit, setInitialForEdit] = useState(null); // { id, title, category, content, startDate, endDate }
+  const [initialForEdit, setInitialForEdit] = useState(null);
 
   const isGeneral = calendarType === "일반";
 
@@ -82,9 +79,8 @@ export default function CalendarsPage() {
 
     setLoading(true);
     try {
-      // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
       const data = showMine
-        ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID, includeShift) // ★ CHG
+        ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID)
         : await apiGetEvents(toYMD(start), toYMD(endEx));
       setEvents(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -141,9 +137,8 @@ export default function CalendarsPage() {
       (async () => {
         setLoading(true);
         try {
-          // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
           const data = showMine
-            ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID, includeShift) // ★ CHG
+            ? await apiGetMyEvents(toYMD(start), toYMD(endEx), EMP_ID)
             : await apiGetEvents(toYMD(start), toYMD(endEx));
           setEvents(Array.isArray(data) ? data : []);
         } catch (e) {
@@ -156,14 +151,14 @@ export default function CalendarsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarType]);
 
-  // ★ NEW: mine / includeShift 토글 변경 시 현재 범위 재조회
+  // "내 일정만" 토글 변경 시 현재 범위 재조회
   useEffect(() => {
     if (!isGeneral || !rangeStart || !rangeEnd) return;
     (async () => {
       setLoading(true);
       try {
         const data = showMine
-          ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID, includeShift) // ★ CHG
+          ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID)
           : await apiGetEvents(toYMD(rangeStart), toYMD(rangeEnd));
         setEvents(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -172,7 +167,8 @@ export default function CalendarsPage() {
         setLoading(false);
       }
     })();
-  }, [showMine, includeShift]); // ★ NEW
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMine]);
 
   /* ===== 날짜/이벤트 클릭 → 상세 or 새 일정 ===== */
   const openDetailOrCreate = (dateObj) => {
@@ -194,9 +190,8 @@ export default function CalendarsPage() {
     if (!rangeStart || !rangeEnd) return;
     setLoading(true);
     try {
-      // ★ CHG: mine 토글 시 로그인 유저 ID(EMP_ID)로 호출
       const data = showMine
-        ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID, includeShift) // ★ CHG
+        ? await apiGetMyEvents(toYMD(rangeStart), toYMD(rangeEnd), EMP_ID)
         : await apiGetEvents(toYMD(rangeStart), toYMD(rangeEnd));
       setEvents(Array.isArray(data) ? data : []);
     } catch (e) {
@@ -207,7 +202,12 @@ export default function CalendarsPage() {
   };
 
   /* ===== 생성/수정 저장 ===== */
-  // data: { id?, title, category, content, startDate, endDate }
+  const toNumericId = (id) => {
+    if (typeof id === "number") return id;
+    const m = String(id).match(/^event-(\d+)$/);
+    return m ? Number(m[1]) : null; // shift-*는 null
+  };
+
   const handleEditorSubmit = async (data) => {
     try {
       if (data.id) {
@@ -223,7 +223,7 @@ export default function CalendarsPage() {
         }
       } else {
         await apiCreateEvent({
-          crewEmployeeId: EMP_ID, // ★ CHG: 로그인 사용자 ID 사용
+          crewEmployeeId: EMP_ID,
           title: data.title,
           content: data.content,
           startDate: data.startDate ?? selectedDate,
@@ -240,11 +240,6 @@ export default function CalendarsPage() {
   };
 
   /* ===== 삭제 ===== */
-  const toNumericId = (id) => {
-    if (typeof id === "number") return id;
-    const m = String(id).match(/^event-(\d+)$/);
-    return m ? Number(m[1]) : null; // shift-*는 null
-  };
   const handleDelete = async (id) => {
     const numeric = toNumericId(id);
     if (numeric == null) {
@@ -265,7 +260,7 @@ export default function CalendarsPage() {
   const handleEditRequest = (eventItem) => {
     setDetailOpen(false);
     setEditorMode("edit");
-    setSelectedDate(eventItem.start); // 'YYYY-MM-DD'
+    setSelectedDate(eventItem.start);
     setInitialForEdit({
       id: eventItem.id,
       title: eventItem.title ?? "",
@@ -287,7 +282,7 @@ export default function CalendarsPage() {
             <h3 className="card-title">필터</h3>
           </div>
           <div className="card-body">
-            {/* ★ NEW: 내 일정만 / 교대 포함 토글 */}
+            {/* "내 일정만 보기"만 남김 */}
             <div className="filter-row" style={{ marginBottom: 12 }}>
               <label className="check-row" style={{ marginRight: 12 }}>
                 <input
@@ -297,20 +292,11 @@ export default function CalendarsPage() {
                 />
                 <span>내 일정만 보기</span>
               </label>
-              <label className="check-row">
-                <input
-                  type="checkbox"
-                  checked={includeShift}
-                  onChange={(e) => setIncludeShift(e.target.checked)}
-                  disabled={!showMine}
-                />
-                <span>교대 포함</span>
-              </label>
             </div>
 
             <ul className="filter-list">
               {CATEGORY_LIST.map((full) => (
-                <li key={full} >
+                <li key={full}>
                   <label className="check-row">
                     <input
                       type="checkbox"
@@ -459,16 +445,16 @@ export default function CalendarsPage() {
           setInitialForEdit(null);
           setEditorOpen(true);
         }}
-        onEdit={handleEditRequest}     /* ← 수정 버튼 콜백 */
-        onDelete={handleDelete}        /* ← 삭제 */
+        onEdit={handleEditRequest}
+        onDelete={handleDelete}
       />
 
       {/* 생성/수정 모달 */}
       {editorOpen && (
         <EventModal
-          mode={editorMode}                 // 'create' | 'edit'
+          mode={editorMode}
           selectedDate={selectedDate}
-          initialValues={initialForEdit}    // edit일 때만 사용
+          initialValues={initialForEdit}
           closeModal={() => setEditorOpen(false)}
           onSubmit={handleEditorSubmit}
         />

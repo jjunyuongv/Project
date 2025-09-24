@@ -44,35 +44,20 @@ public class CalendarService {
         return Stream.concat(shifts.stream(), events.stream()).collect(Collectors.toList());
     }
 
-    // ★ NEW: "내 일정만" 조회 (Event는 본인 것만 필터, Shift는 옵션으로 포함)
-    public List<CalendarDTO> findMineByDateRange(Integer me, LocalDate start, LocalDate end, boolean includeShift) {
+    // "내 일정만" (교대 미포함)
+    public List<CalendarDTO> findMineByDateRange(Integer me, LocalDate start, LocalDate end) {
         if (me == null) {
-            throw new IllegalArgumentException("X-Employee-Id(로그인 사용자 식별자)가 필요합니다."); // ★ NEW
+            throw new IllegalArgumentException("X-Employee-Id(로그인 사용자 식별자)가 필요합니다.");
         }
 
-        // 1) 기간 겹치는 이벤트 중 '내 것'만 선별
-        List<CalendarDTO> myEvents = eventRepository.findOverlapping(start, end)
+        return eventRepository.findOverlapping(start, end)
                 .stream()
                 .filter(e -> e.getCrewEmployeeId() != null && e.getCrewEmployeeId().equals(me))
                 .map(this::convertEventToDTO)
-                .collect(Collectors.toList()); // ★ NEW
-
-        if (!includeShift) {
-            return myEvents; // ★ NEW
-        }
-
-        // 2) 교대(Shift) 일정 포함 옵션
-        List<CalendarDTO> shifts = shiftRepository
-                .findByStartTimeBetween(start.atStartOfDay(), end.plusDays(1).atStartOfDay())
-                .stream()
-                .map(this::convertShiftToDTO)
-                .collect(Collectors.toList()); // ★ NEW
-
-        return Stream.concat(shifts.stream(), myEvents.stream())
-                .collect(Collectors.toList()); // ★ NEW
+                .collect(Collectors.toList());
     }
 
-    public Event createEvent(CalendarDTO.CreateEventRequest request) {
+    public com.pj.springboot.calendars.Event createEvent(CalendarDTO.CreateEventRequest request) {
         Event newEvent = new Event();
         newEvent.setCrewEmployeeId(request.getCrewEmployeeId());
         newEvent.setTitle(request.getTitle());
@@ -133,12 +118,11 @@ public class CalendarService {
                 ? event.getEndDate().plusDays(1).atStartOfDay()
                 : start.plusDays(1);
 
-        // ★ NEW: 프런트 필터(한글 카테고리)에 맞춰 표시용 카테고리로 변환
-        String displayCategory = mapCategoryForFrontend(event.getCategory()); // ★ NEW
+        String displayCategory = mapCategoryForFrontend(event.getCategory());
 
         Map<String, Object> props = new HashMap<>();
-        props.put("category", displayCategory);          // ★ NEW: 프런트가 쓰는 카테고리
-        props.put("rawCategory", event.getCategory());   // ★ NEW: 원본도 같이 내려줌(디버그용)
+        props.put("category", displayCategory);
+        props.put("rawCategory", event.getCategory());
         props.put("content", event.getContent());
 
         return CalendarDTO.builder()
@@ -146,19 +130,17 @@ public class CalendarService {
                 .title(event.getTitle())
                 .start(start)
                 .end(end)
-                .backgroundColor(getColorForEvent(displayCategory)) // ★ NEW
-                .borderColor(getColorForEvent(displayCategory))     // ★ NEW
+                .backgroundColor(getColorForEvent(displayCategory))
+                .borderColor(getColorForEvent(displayCategory))
                 .isShift(false)
-                .category(displayCategory)                          // ★ NEW
+                .category(displayCategory)
                 .allDay(true)
                 .extendedProps(props)
                 .build();
     }
 
-    // ★ NEW: 백엔드 원본 카테고리 → 프런트 필터용 한글 카테고리
     private String mapCategoryForFrontend(String raw) {
         if (raw == null) return "개인일정";
-        // 이미 한글 카테고리면 그대로 반환
         if ("개인일정".equals(raw) || "비행일정".equals(raw) || "정비일정".equals(raw)
                 || "교육일정".equals(raw) || "휴가일정".equals(raw)) {
             return raw;
@@ -182,7 +164,7 @@ public class CalendarService {
         if ("정비일정".equals(category)) return "#ffb300";
         if ("교육일정".equals(category)) return "#42a5f5";
         if ("개인일정".equals(category)) return "#ef4444";
-        if ("휴가일정".equals(category)) return "#5c6bc0"; // ★ NEW: 휴가일정 색상(원하면 변경)
+        if ("휴가일정".equals(category)) return "#5c6bc0";
         return "#ab47bc";
     }
 }
