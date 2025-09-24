@@ -177,6 +177,9 @@ CREATE TABLE attendances (
     attendance_edit_employee_id INT,
     PRIMARY KEY (attendance_id)
 );
+
+ALTER TABLE attendances ADD CONSTRAINT uq_attendance UNIQUE (attendance_date, attendance_employee_id);
+
 -- ------------------------------------------------------------------------------
 -- 회원정보 더미
 ALTER TABLE employees MODIFY employee_id INT NOT NULL AUTO_INCREMENT;
