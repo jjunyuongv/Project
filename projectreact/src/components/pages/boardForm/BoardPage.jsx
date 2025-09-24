@@ -1,13 +1,15 @@
-import axios from "axios";
+// src/components/pages/BoardPage.jsx (경로는 프로젝트 구조에 맞게)
+// 기존 로직은 유지, 요청 URL만 api 인스턴스로 교체
+
 import { FileDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge, Button, Form, InputGroup } from "react-bootstrap";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
 import "./BoardPage.css";
+import api from "../../../api/axios";
 
-
-
+// ✅ 공용 axios 인스턴스 사용 (baseURL: /api 또는 VITE_API_BASE)
 
 const PAGE_SIZE = 8;
 
@@ -51,13 +53,14 @@ export default function BoardPage(props) {
     let countResp = []
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
-      countResp = await axios.get(props.baseUrl + "/api/archive/count/" + searchField + "/" + searchWord);
-      response = await axios.get(props.baseUrl + "/api/archive/" + searchField + "/" + searchWord + "/page/" + page + "/" + PAGE_SIZE);
+      // ✅ baseURL=/api 이므로 여기서는 /archive 로 시작
+      countResp = await api.get("/archive/count/" + searchField + "/" + searchWord);
+      response = await api.get("/archive/" + searchField + "/" + searchWord + "/page/" + page + "/" + PAGE_SIZE);
     } else {
-
       setFormData({ searchField: "archTitle", searchWord: "" });
-      countResp = await axios.get(props.baseUrl + "/api/archive/count");
-      response = await axios.get(props.baseUrl + "/api/archive/page/" + page + "/" + 5);
+      countResp = await api.get("/archive/count");
+      // 기존 코드 유지(5 고정) — 기본 동작 보존
+      response = await api.get("/archive/page/" + page + "/" + 5);
     }
     setCount(countResp.data);
     setRespData(response.data);
@@ -73,10 +76,13 @@ export default function BoardPage(props) {
   }, [page, searchField, searchWord]);
 
   const download = async (archId) => {
-    const response = await axios.get(props.baseUrl + "/api/archivefiles/" + archId);
+    // ✅ 파일 메타 조회
+    const response = await api.get("/archivefiles/" + archId);
     let ofile = response.data;
-    axios({
-      url: props.baseUrl + "/api/archivefiles/download/" + archId,
+
+    // ✅ blob 다운로드 (baseURL=/api)
+    api({
+      url: "/archivefiles/download/" + archId,
       method: 'GET',
       responseType: 'blob', // 필수
     }).then((res) => {
@@ -88,7 +94,6 @@ export default function BoardPage(props) {
         document.body.appendChild(link);
         link.click();
         link.remove();
-
       });
     });
   }

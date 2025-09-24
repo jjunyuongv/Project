@@ -34,7 +34,7 @@ function Login() {
 
     try {
       const loggedInUser = await login(formData);
-      setMessage(`환영합니다, ${loggedInUser.name}님!`); // employeeName → name
+      setMessage(`환영합니다, ${loggedInUser.name}님!`);
       setShowModal(true);
     } catch (error) {
       if (error.response && error.response.data) {
@@ -53,10 +53,15 @@ function Login() {
     }
   };
 
+  // ✅ 배포/개발 공통: 현재 오리진을 기준으로 리다이렉트 URI 생성
+  const ORIGIN = window.location.origin;
+  const KAKAO_REST_KEY = import.meta.env.VITE_KAKAO_REST_KEY;        // ← .env로 이동
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;    // ← .env로 이동
+
   const handleKakaoLogin = () => {
-    const JS_KEY = "eb030c320f22b162356f3e23377e325d"; 
-    const REDIRECT_URI = "http://localhost:5173/kakao-redirect"; // 프론트 React 라우트
-    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${JS_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+    const REDIRECT_URI = `${ORIGIN}/kakao-redirect`;
+    const KAKAO_AUTH_URL =
+      `https://kauth.kakao.com/oauth/authorize?client_id=${encodeURIComponent(KAKAO_REST_KEY)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
 
     const width = 500;
     const height = 600;
@@ -78,8 +83,8 @@ function Login() {
           setMessage(`카카오 로그인 실패: ${event.data.error}`);
         } else if (event.data.user) {
           const user = event.data.user;
-          console.log("Kakao user received:", user); // 디버깅용
-          setMessage(`환영합니다, ${user.name}님!`); // employeeName → name
+          console.log("Kakao user received:", user);
+          setMessage(`환영합니다, ${user.name}님!`);
           setShowModal(true);
         }
         window.removeEventListener("message", listener);
@@ -90,10 +95,9 @@ function Login() {
   };
 
   const handleGoogleLogin = () => {
-    const CLIENT_ID = "671525201402-78tr6u9ukehovd5b5lb97j47u9o7j1vu.apps.googleusercontent.com"; // Google API Client ID
-    const REDIRECT_URI = "http://localhost:5173/google-redirect"; // 구글 리다이렉트 URI
-
-    const GOOGLE_AUTH_URL = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=openid%20email%20profile`;
+    const REDIRECT_URI = `${ORIGIN}/google-redirect`;
+    const GOOGLE_AUTH_URL =
+      `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=openid%20email%20profile`;
 
     const width = 500;
     const height = 600;
@@ -115,8 +119,8 @@ function Login() {
           setMessage(`구글 로그인 실패: ${event.data.error}`);
         } else if (event.data.user) {
           const user = event.data.user;
-          console.log("Google user received:", user); // 디버깅용
-          setMessage(`환영합니다, ${user.name}님!`); // employeeName → name
+          console.log("Google user received:", user);
+          setMessage(`환영합니다, ${user.name}님!`);
           setShowModal(true);
         }
         window.removeEventListener("message", listener);

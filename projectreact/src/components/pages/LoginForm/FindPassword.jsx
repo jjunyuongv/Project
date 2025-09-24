@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+// ✅ 공용 axios 인스턴스 사용 (baseURL:'/api', withCredentials, CSRF/토큰 인터셉터)
+import api from "../../../api/axios";
 import './login.css';
 import './findAccount.css';
 
@@ -31,7 +32,7 @@ function FindPassword() {
             return;
         }
         try {
-            await axios.post("http://localhost:8081/api/email/send-auth-code", {
+            await api.post("/email/send-auth-code", {
                 loginId: formData.loginId.trim(),
                 email: formData.email.trim(),
                 mode: "resetPassword"
@@ -67,7 +68,7 @@ function FindPassword() {
             return;
         }
         try {
-            const response = await axios.post("http://localhost:8081/api/email/verify-auth-code", {
+            const response = await api.post("/email/verify-auth-code", {
                 email: formData.email.trim(),
                 authCode: formData.authCode.trim()
             });
@@ -117,8 +118,8 @@ function FindPassword() {
         };
 
         try {
-            const response = await axios.post(
-                "http://localhost:8081/api/employees/reset-password",
+            const response = await api.post(
+                "/employees/reset-password",
                 payload,
                 { headers: { "Content-Type": "application/json" } }
             );

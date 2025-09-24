@@ -1,10 +1,11 @@
-import axios from 'axios';
+// import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row, Spinner } from 'react-bootstrap';
 import ReactModal from 'react-modal';
 import "../Facilities/css/MainContentStyle.css";
 import "./css/ModalStyle.css";
 import { useAuth } from '../LoginForm/AuthContext';
+import api from '../../../api/axios';
 
 function FacilityReservationWrite(props) {
   const [formData, setFormData] = useState({
@@ -40,7 +41,8 @@ function FacilityReservationWrite(props) {
       return;
     }
 
-    let response = await axios.post(props.baseUrl + "/api/facilityReservations", formData);
+    // let response = await axios.post(props.baseUrl + "/api/facilityReservations", formData);
+    let response = await api.post("/facilityReservations", formData);
     // 입력 성공
     if (response.data === 1) {
       alert("예약신청 성공!");

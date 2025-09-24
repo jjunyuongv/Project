@@ -1,35 +1,54 @@
+version: "3.9"
+
 services:
   db:
     image: mysql:8.1
-    container_name: mysql-db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 1234
       MYSQL_DATABASE: 404notfound
       MYSQL_USER: 404notfound
       MYSQL_PASSWORD: 1234
-    ports:
-      - "3306:3306"
+      TZ: Asia/Seoul
+    # 호스트 포트 미노출(보안/충돌 방지). 필요 시 "3307:3306" 등으로 추가 가능
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p1234"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./404NotFound
-    ports:
-      - "8081:8081"
+    restart: always
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/404notfound?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/404notfound?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: 404notfound
       SPRING_DATASOURCE_PASSWORD: 1234
+      APP_UPLOAD_DIR: /app/uploads
+      TZ: Asia/Seoul
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    # 프론트(Nginx)가 내부에서 backend:8081로 프록시하므로 외부 포트 노출 불필요
+    # ports:
+    #   - "8081:8081"
 
   frontend:
     build: ./projectreact
+    restart: always
     ports:
-      - "5173:80"
+      - "5173:80"  # 브라우저 접속: http://<호스트IP>:5173
     depends_on:
       - backend
 
 volumes:
   db_data:
+  uploads:

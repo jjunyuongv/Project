@@ -1,10 +1,11 @@
-import axios from "axios";
+// import axios from "axios";  
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
 import ModalController from "../modal/ModalController";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function FacilitiesList(props) {
@@ -79,12 +80,16 @@ function FacilitiesList(props) {
     let countResp = []
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
-      countResp = await axios.get(props.baseUrl + "/api/facilities/count?searchField=" + searchField + "&searchWord" + searchWord);
-      response = await axios.get(props.baseUrl + "/api/facilities?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
+      // countResp = await axios.get(props.baseUrl + "/api/facilities/count?searchField=" + searchField + "&searchWord" + searchWord);
+      countResp = await api.get("/facilities/count?searchField=" + searchField + "&searchWord=" + searchWord);
+      // response = await axios.get(props.baseUrl + "/api/facilities?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
+      response  = await api.get("/facilities?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
     } else {
       setFormData({ searchField: "facilityName", searchWord: "" });
-      countResp = await axios.get(props.baseUrl + "/api/facilities/count");
-      response = await axios.get(props.baseUrl + "/api/facilities?page=" + page + "&size=" + pageSize);
+      // countResp = await axios.get(props.baseUrl + "/api/facilities/count");
+      countResp = await api.get("/facilities/count");
+      // response = await axios.get(props.baseUrl + "/api/facilities?page=" + page + "&size=" + pageSize);
+      response  = await api.get("/facilities?page=" + page + "&size=" + pageSize);
     }
     setCount(countResp.data);
     setRespData(response.data);
@@ -116,7 +121,8 @@ function FacilitiesList(props) {
 
   const confirmDelete = async (facilityId) => {
     if (confirm("정말 이 시설을 삭제하시겠습니까?")) {
-      let response = await axios.delete(props.baseUrl + "/api/facilities/" + facilityId);
+      // let response = await axios.delete(props.baseUrl + "/api/facilities/" + facilityId);
+      let response = await api.delete("/facilities/" + facilityId);
       if (response.data === 1) {
         alert("삭제 성공");
         getData();

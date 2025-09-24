@@ -1,9 +1,10 @@
-import axios from "axios";
+// import axios from "axios";
 import { useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function AttendanceStats(props) {
@@ -36,15 +37,16 @@ function AttendanceStats(props) {
   const getData = async () => {
     let response = [];
     let countResp = [];
-    let dataUrl = props.baseUrl + "/api/attendances/stat";
+    // let dataUrl = props.baseUrl + "/api/attendances/stat";
+    let dataUrl = "/attendances/stat";
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
-      countResp = await axios.get(dataUrl + "/count?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord);
-      response = await axios.get(dataUrl + "?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
+      countResp = await api.get(dataUrl + "/count?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord);
+      response = await api.get(dataUrl + "?month=" + month + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
     } else {
       setFormData({ searchField: "employeeName", searchWord: "" });
-      countResp = await axios.get(dataUrl + "/count?month=" + month);
-      response = await axios.get(dataUrl + "?month=" + month + "&page=" + page + "&size" + pageSize);
+      countResp = await api.get(dataUrl + "/count?month=" + month);
+      response = await api.get(dataUrl + "?month=" + month + "&page=" + page + "&size" + pageSize);
     }
 
     setCount(countResp.data);

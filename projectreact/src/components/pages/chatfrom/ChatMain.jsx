@@ -6,74 +6,121 @@ import SockJS from "sockjs-client";
 import { useAuth } from "../LoginForm/AuthContext";
 
 /* =============================== */
+/* ======== 공통 fetch 헬퍼 ======== */
+/* =============================== */
+// 쿠키에서 CSRF 토큰 꺼내기
+function getCookie(name) {
+  return document.cookie
+    .split("; ")
+    .find((r) => r.startsWith(name + "="))
+    ?.split("=")[1];
+}
+// localStorage.me에서 사번 추출
+function extractEmpIdFromLocalStorage() {
+  try {
+    const me = JSON.parse(localStorage.getItem("me") || "null");
+    const candidates = [
+      me?.employeeId, me?.employee_id, me?.empId, me?.emp_id,
+      me?.userId, me?.user_id, me?.id,
+      me?.member?.employeeId, me?.employee?.employeeId,
+    ];
+    for (const c of candidates) {
+      if (c == null) continue;
+      const digits = String(c).match(/\d+/g)?.join("") ?? "";
+      if (digits) return digits;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+// 공통 fetch: 쿠키 포함 + CSRF + X-Employee-Id 자동 주입
+async function apiFetch(url, init = {}) {
+  const headers = new Headers(init.headers || { Accept: "application/json" });
+
+  // CSRF
+  const xsrf = getCookie("XSRF-TOKEN") || getCookie("X-XSRF-TOKEN");
+  if (xsrf && !headers.has("X-XSRF-TOKEN")) {
+    headers.set("X-XSRF-TOKEN", decodeURIComponent(xsrf));
+  }
+  // 사번 헤더
+  if (!headers.has("X-Employee-Id")) {
+    const emp = extractEmpIdFromLocalStorage();
+    if (emp) headers.set("X-Employee-Id", emp);
+  }
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+  if (!res.ok) {
+    // 에러 본문을 최대한 살려서 던짐
+    let msg = `${res.status} ${res.statusText}`.trim();
+    try {
+      const t = await res.text();
+      if (t) msg = t;
+    } catch {}
+    throw new Error(msg);
+  }
+  return res;
+}
+// JSON 바로 파싱
+async function apiJson(url, init = {}) {
+  const r = await apiFetch(url, init);
+  try {
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+/* =============================== */
 /* ========== REST API =========== */
 /* =============================== */
 async function apiCreateDirectRoom(meId, otherId) {
-  const r = await fetch(`/api/chat/rooms/direct?userA=${meId}&userB=${otherId}`, {
+  return apiJson(`/api/chat/rooms/direct?userA=${meId}&userB=${otherId}`, {
     method: "POST",
-    credentials: "include",
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 async function apiCreateGroupRoom({ name, memberIds }) {
-  const r = await fetch(`/api/chat/rooms/group`, {
+  return apiJson(`/api/chat/rooms/group`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({ name, memberIds }),
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 async function apiGetMyRooms(meId) {
-  const r = await fetch(`/api/chat/rooms/my?me=${meId}`, { credentials: "include" });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return apiJson(`/api/chat/rooms/my?me=${meId}`);
 }
 async function apiGetMessages(roomId, { beforeId = null, size = 50 } = {}) {
   const qs = new URLSearchParams();
   if (beforeId) qs.set("beforeId", String(beforeId));
   if (size) qs.set("size", String(size));
-  const r = await fetch(`/api/chat/rooms/${roomId}/messages?${qs.toString()}`, {
-    credentials: "include",
-  });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  return apiJson(`/api/chat/rooms/${roomId}/messages?${qs.toString()}`);
 }
 async function apiLeaveRoom(roomId, meId) {
-  const r = await fetch(`/api/chat/rooms/${roomId}/leave?me=${meId}`, {
+  return apiJson(`/api/chat/rooms/${roomId}/leave?me=${meId}`, {
     method: "DELETE",
-    credentials: "include",
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 async function apiInviteMembers(roomId, memberIds) {
-  const r = await fetch(`/api/chat/rooms/${roomId}/invite`, {
+  return apiJson(`/api/chat/rooms/${roomId}/invite`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    credentials: "include",
     body: JSON.stringify({ memberIds }),
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 async function apiJoinRoom(roomId, meId) {
-  const r = await fetch(`/api/chat/rooms/${roomId}/join?me=${meId}`, {
+  return apiJson(`/api/chat/rooms/${roomId}/join?me=${meId}`, {
     method: "POST",
-    credentials: "include",
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 
 /* 🔹 직원 이름 조회 (없으면 null) */
 async function apiGetEmployeeName(userId) {
   try {
-    const r = await fetch(`/api/employees/${userId}`, { credentials: "include" });
-    if (!r.ok) return null;
-    const data = await r.json();
+    const data = await apiJson(`/api/employees/${userId}`);
     return data?.employeeName ?? data?.name ?? data?.fullName ?? null;
   } catch {
     return null;

@@ -1,9 +1,11 @@
-import axios from "axios";
+// import axios from "axios";
+
 import { useEffect, useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import ModalController from "../modal/ModalController";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function FacilitiesWrite(props) {
@@ -51,7 +53,8 @@ function FacilitiesWrite(props) {
       return;
     }
 
-    let response = await axios.post(props.baseUrl + "/api/facilities", formData);
+    // let response = await axios.post(props.baseUrl + "/api/facilities", formData);
+    let response = await api.post("/facilities", formData);
     // 입력 성공
     if (response.data === 1) {
       alert("시설물 등록 성공!");

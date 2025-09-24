@@ -2,7 +2,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom"; // ★ 정리: useNavigate/useAuth 제거
 
-const API_BASE = import.meta?.env?.VITE_API_BASE || "http://localhost:8081";
+// ▼ 변경: 배포/개발 공통 - 기본은 ''(상대경로)로 두고,
+// .env에 '/api'가 들어오면 중복 방지를 위해 ''로 정규화
+const RAW_API_BASE = import.meta?.env?.VITE_API_BASE ?? "";
+const API_BASE = RAW_API_BASE.endsWith("/api") ? "" : (RAW_API_BASE || "");
 
 /* === 공통 유틸(간단 유지) === */
 class HttpError extends Error {

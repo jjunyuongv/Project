@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import koLocale from '@fullcalendar/core/locales/ko';
-import axios from 'axios';
+import api from '../../api/axios';
 
 function Calendars({
   calendarRef,
@@ -18,7 +18,7 @@ function Calendars({
 }) {
 
   const fetchApiEvents = (fetchInfo, successCallback, failureCallback) => {
-    axios.get('/api/calendars', {
+    api.get('/api/calendars', {
       params: {
         start: fetchInfo.startStr.substring(0, 10), // YYYY-MM-DD
         end: fetchInfo.endStr.substring(0, 10),

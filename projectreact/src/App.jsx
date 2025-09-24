@@ -3,53 +3,54 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 
-import { AuthProvider, useAuth } from "./components/pages/LoginForm/AuthContext";
+import { useAuth } from "./components/pages/LoginForm/AuthContext";
 import ProtectedRoute from "./components/pages/LoginForm/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import "./App.css";
 
-// 페이지
+/* ---------- 페이지들 ---------- */
 import HomePage from "./components/pages/HomePage";
 
-// 로그인 / 인증
+/* 로그인 / 인증 */
 import Login from "./components/pages/LoginForm/Login";
 import Signup from "./components/pages/LoginForm/Signup";
 import FindId from "./components/pages/LoginForm/FindId";
 import FindPassword from "./components/pages/LoginForm/FindPassword";
 import MyPage from "./components/pages/LoginForm/MyPage";
+import KakaoRedirect from "./components/pages/LoginForm/KakaoRedirect";
+import GoogleRedirect from "./components/pages/LoginForm/GoogleRedirect";
 
-// 캘린더 / 채팅 / 위치
+/* 캘린더 / 채팅 / 위치 */
 import CalendarPage from "./components/pages/calendars/CalendarsPage";
 import ChatMain from "./components/pages/chatfrom/ChatMain";
 import LocationMain from "./components/pages/Location/LocationMain";
 
-// 결재
+/* 결재 */
 import ApprovalList from "./components/pages/approval/ApprovalList";
 import ApprovalView from "./components/pages/approval/ApprovalView";
 import ApprovalEdit from "./components/pages/approval/ApprovalEdit";
 import ApprovalWrite from "./components/pages/approval/ApprovalWrite";
 
-// 게시판
+/* 게시판 */
 import BoardPage from "./components/pages/boardForm/BoardPage";
 import ViewPage from "./components/pages/boardForm/ViewPage";
 import WritePage from "./components/pages/boardForm/WritePage";
 import EditPage from "./components/pages/boardForm/EditPage";
 
-// 시설
+/* 시설 */
 import FacilitiesList from "./components/pages/Facilities/FacilitiesList";
 import FacilitiesWrite from "./components/pages/Facilities/FacilitiesWrite";
 import FacilitiesEdit from "./components/pages/Facilities/FacilitiesEdit";
 import FacilityReservationApproval from "./components/pages/Facilities/FacilityReservationApproval";
 import MyFacilityReservationList from "./components/pages/Facilities/MyFacilityReservationList";
 
-// 근태
+/* 근태 */
 import AttendanceList from "./components/pages/attendance/AttendanceList";
 import AttendanceStats from "./components/pages/attendance/AttendanceStats";
-import KakaoRedirect from "./components/pages/LoginForm/KakaoRedirect";
-import GoogleRedirect from "./components/pages/LoginForm/GoogleRedirect";
 
-// 공공데이터 키
-const apiKey = import.meta.env.VITE_API_KEY;
+/* ---------- 환경변수(공공데이터) ---------- */
+const PUBLIC_API_KEY =
+  import.meta.env.VITE_PUBLIC_API_KEY || import.meta.env.VITE_API_KEY;
 
 /* ---------- 유틸 ---------- */
 const toYYYYMMDD = (d) => {
@@ -58,13 +59,14 @@ const toYYYYMMDD = (d) => {
   const D = String(d.getDate()).padStart(2, "0");
   return `${y}${m}${D}`;
 };
-const fmtLabelDate = (dateObj) => {
-  return new Intl.DateTimeFormat("ko", {
+
+const fmtLabelDate = (dateObj) =>
+  new Intl.DateTimeFormat("ko", {
     dateStyle: "medium",
     weekday: "short",
     timeZone: "Asia/Seoul",
   }).format(dateObj);
-};
+
 const fmtTime = (raw) => {
   if (!raw) return "";
   const digits = String(raw).replace(/\D/g, "");
@@ -75,7 +77,7 @@ const fmtTime = (raw) => {
   return String(raw);
 };
 
-/* 여러 API 필드 케이스를 흡수해서 우리 카드에 맞게 정규화 */
+/* 여러 API 필드를 흡수해서 정규화 */
 const normalizeFlightItem = (it) => {
   const airline =
     it.airlineKorean ||
@@ -84,10 +86,8 @@ const normalizeFlightItem = (it) => {
     it.airline ||
     it.company ||
     "";
-
   const flightNo =
     it.flightId || it.airFln || it.flightNo || it.flightNum || it.fnumber || "";
-
   const dep =
     it.depAirportKor ||
     it.depAirport ||
@@ -95,7 +95,6 @@ const normalizeFlightItem = (it) => {
     it.boardingKor ||
     it.dep ||
     "";
-
   const arr =
     it.arrAirportKor ||
     it.arrAirport ||
@@ -103,7 +102,6 @@ const normalizeFlightItem = (it) => {
     it.arriveKor ||
     it.arr ||
     "";
-
   const timeRaw =
     it.std || it.etd || it.schDeptime || it.schTime || it.scheduleDateTime || it.time;
 
@@ -114,14 +112,14 @@ const normalizeFlightItem = (it) => {
   };
 };
 
-/* 특정 날짜(자정~자정)를 조회해서 정규화된 운항 리스트 반환 */
+/* 특정 날짜 운항 정보 */
 async function fetchFlightsForDate(dateObj) {
   const schDate = toYYYYMMDD(dateObj);
   const url = "https://apis.data.go.kr/1360000/AirInfoService/getAirInfo";
   try {
     const { data } = await axios.get(url, {
       params: {
-        serviceKey: apiKey,
+        serviceKey: PUBLIC_API_KEY,
         numOfRows: 200,
         pageNo: 1,
         dataType: "JSON",
@@ -150,26 +148,21 @@ async function fetchFlightsForDate(dateObj) {
   }
 }
 
-/* ------------------ 기상청 단기예보(getVilageFcst) 추가 ------------------ */
-
-// 김포국제공항 좌표
+/* ------------------ 기상청 단기예보 ------------------ */
 const GM_LAT = 37.5586545;
 const GM_LON = 126.7944739;
-
-// KMA 단기예보(3시간 간격) 엔드포인트
 const KMA_VILAGE_URL =
   "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
 
-/** 위경도 → KMA 단기예보 격자(nx, ny) 변환 (LCC DFS) */
 function latLonToKmaGrid(lat, lon) {
-  const RE = 6371.00877; // 지구 반경(km)
-  const GRID = 5.0;      // 격자 간격(km)
-  const SLAT1 = 30.0;    // 표준위도1
-  const SLAT2 = 60.0;    // 표준위도2
-  const OLON = 126.0;    // 기준경도
-  const OLAT = 38.0;     // 기준위도
-  const XO = 43;         // 기준점 X좌표
-  const YO = 136;        // 기준점 Y좌표
+  const RE = 6371.00877;
+  const GRID = 5.0;
+  const SLAT1 = 30.0;
+  const SLAT2 = 60.0;
+  const OLON = 126.0;
+  const OLAT = 38.0;
+  const XO = 43;
+  const YO = 136;
 
   const DEGRAD = Math.PI / 180.0;
 
@@ -179,14 +172,16 @@ function latLonToKmaGrid(lat, lon) {
   const olon = OLON * DEGRAD;
   const olat = OLAT * DEGRAD;
 
-  let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
+  let sn =
+    Math.tan(Math.PI * 0.25 + slat2 * 0.5) /
+    Math.tan(Math.PI * 0.25 + slat1 * 0.5);
   sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
   let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5);
   sf = (Math.pow(sf, sn) * Math.cos(slat1)) / sn;
   let ro = Math.tan(Math.PI * 0.25 + olat * 0.5);
   ro = (re * sf) / Math.pow(ro, sn);
 
-  let ra = Math.tan(Math.PI * 0.25 + (lat) * DEGRAD * 0.5);
+  let ra = Math.tan(Math.PI * 0.25 + lat * DEGRAD * 0.5);
   ra = (re * sf) / Math.pow(ra, sn);
   let theta = lon * DEGRAD - olon;
   if (theta > Math.PI) theta -= 2.0 * Math.PI;
@@ -200,7 +195,7 @@ function latLonToKmaGrid(lat, lon) {
 
 function getKmaBaseDateTimeForVilage(now = new Date()) {
   const t = new Date(now);
-  t.setMinutes(t.getMinutes() - 45); 
+  t.setMinutes(t.getMinutes() - 45);
 
   const baseHours = [2, 5, 8, 11, 14, 17, 20, 23];
   let h = t.getHours();
@@ -208,7 +203,7 @@ function getKmaBaseDateTimeForVilage(now = new Date()) {
 
   if (h < baseHours[0]) {
     t.setDate(t.getDate() - 1);
-    baseH = baseHours[baseHours.length - 1]; // 23시
+    baseH = baseHours[baseHours.length - 1];
   } else {
     for (const hh of baseHours) {
       if (h >= hh) baseH = hh;
@@ -226,7 +221,7 @@ async function fetchWeather() {
 
     const { data } = await axios.get(KMA_VILAGE_URL, {
       params: {
-        serviceKey: import.meta.env.VITE_KMA_KEY, 
+        serviceKey: import.meta.env.VITE_KMA_KEY, // 환경변수 필요
         pageNo: 1,
         numOfRows: 200,
         dataType: "JSON",
@@ -252,16 +247,15 @@ async function fetchWeather() {
     const firstKey = Object.keys(byTime).sort()[0];
     const pick = byTime[firstKey] || {};
 
-    const weather = {
-      temp: pick.TMP != null ? Number(pick.TMP) : null,      // 기온(℃)
-      skyCode: pick.SKY != null ? Number(pick.SKY) : null,   // 하늘상태
-      ptyCode: pick.PTY != null ? Number(pick.PTY) : null,   // 강수형태
-      windDeg: pick.VEC != null ? Number(pick.VEC) : null,   // 풍향
-      windSpeed: pick.WSD != null ? Number(pick.WSD) : null, // 풍속
-      humidity: pick.REH != null ? Number(pick.REH) : null,  // 습도
+    return {
+      temp: pick.TMP != null ? Number(pick.TMP) : null,
+      skyCode: pick.SKY != null ? Number(pick.SKY) : null,
+      ptyCode: pick.PTY != null ? Number(pick.PTY) : null,
+      windDeg: pick.VEC != null ? Number(pick.VEC) : null,
+      windSpeed: pick.WSD != null ? Number(pick.WSD) : null,
+      humidity: pick.REH != null ? Number(pick.REH) : null,
       base: `${base_date} ${base_time}`,
     };
-    return weather;
   } catch (e) {
     console.error("[fetchWeather] KMA error:", e);
     return null;
@@ -269,11 +263,22 @@ async function fetchWeather() {
 }
 
 /* ---------- 라우트 ---------- */
-function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dataError }) {
- const { isLoading } = useAuth();
-  const url = { jsp: "http://localhost:8081", react: "http://localhost:5173" };
+function AppRoutes({
+  scheduleItems,
+  scheduleDateLabel,
+  weather,
+  dataLoading,
+  dataError,
+}) {
+  const { isLoading } = useAuth();
 
-  if (isLoading) return <div style={{ textAlign: "center", padding: "50px" }}>로딩 중...</div>;
+  // 백엔드 베이스 URL
+  const baseUrl = "/api";
+
+  if (isLoading)
+    return (
+      <div style={{ textAlign: "center", padding: "50px" }}>로딩 중...</div>
+    );
 
   return (
     <>
@@ -288,16 +293,32 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
               weather={weather}
               loading={dataLoading}
               error={dataError}
-              /* 제목 옆에 실제 조회 날짜를 보여줌 */
               flightDateLabel={scheduleDateLabel}
-              /* 날씨 카드 상단 도시 라벨 */
               placeLabel="서울(김포공항)"
-              /* 날씨 포맷 콜백 */
               fmtBase={(d, t) => (d && t ? `${d} ${t}` : "--")}
               degToDirText={(deg) => {
                 if (deg == null) return "-";
-                const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
-                return dirs[Math.round(((deg % 360) / 22.5)) % 16] || `${deg}°`;
+                const dirs = [
+                  "N",
+                  "NNE",
+                  "NE",
+                  "ENE",
+                  "E",
+                  "ESE",
+                  "SE",
+                  "SSE",
+                  "S",
+                  "SSW",
+                  "SW",
+                  "WSW",
+                  "W",
+                  "WNW",
+                  "NW",
+                  "NNW",
+                ];
+                return (
+                  dirs[Math.round(((deg % 360) / 22.5)) % 16] || `${deg}°`
+                );
               }}
               ptyToText={(pty) => (pty ? String(pty) : "-")}
             />
@@ -309,47 +330,173 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
         <Route path="/Signup" element={<Signup />} />
         <Route path="/FindId" element={<FindId />} />
         <Route path="/FindPassword" element={<FindPassword />} />
-        <Route path="/MyPage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+        <Route
+          path="/MyPage"
+          element={
+            <ProtectedRoute>
+              <MyPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/kakao-redirect" element={<KakaoRedirect />} />
         <Route path="/google-redirect" element={<GoogleRedirect />} />
 
-
         {/* 캘린더 */}
-        <Route path="/Calendars" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+        <Route
+          path="/Calendars"
+          element={
+            <ProtectedRoute>
+              <CalendarPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 결재 */}
-        <Route path="/ApprovalList" element={<ProtectedRoute><ApprovalList /></ProtectedRoute>} />
-        <Route path="/ApprovalView/:num" element={<ProtectedRoute><ApprovalView /></ProtectedRoute>} />
-        <Route path="/ApprovalWrite" element={<ProtectedRoute><ApprovalWrite /></ProtectedRoute>} />
-        <Route path="/ApprovalEdit" element={<ProtectedRoute><ApprovalEdit /></ProtectedRoute>} />
+        <Route
+          path="/ApprovalList"
+          element={
+            <ProtectedRoute>
+              <ApprovalList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ApprovalView/:num"
+          element={
+            <ProtectedRoute>
+              <ApprovalView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ApprovalWrite"
+          element={
+            <ProtectedRoute>
+              <ApprovalWrite />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ApprovalEdit"
+          element={
+            <ProtectedRoute>
+              <ApprovalEdit />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 게시판 */}
-        <Route path="/BoardPage">
-          <Route path=":page/:searchField?/:searchWord?" element={<ProtectedRoute><BoardPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
-        </Route>
-        <Route path="/ViewPage">
-          <Route path=":id" element={<ProtectedRoute><ViewPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
-        </Route>
-        <Route path="/WritePage" element={<ProtectedRoute><WritePage baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/EditPage">
-          <Route path=":id" element={<ProtectedRoute><EditPage baseUrl={url.jsp} /></ProtectedRoute>} ></Route>
-        </Route>
+        <Route
+          path="/BoardPage/:page/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <BoardPage baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ViewPage/:id"
+          element={
+            <ProtectedRoute>
+              <ViewPage baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/WritePage"
+          element={
+            <ProtectedRoute>
+              <WritePage baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/EditPage/:id"
+          element={
+            <ProtectedRoute>
+              <EditPage baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 채팅 / 위치 */}
-        <Route path="/ChatMain" element={<ProtectedRoute><ChatMain /></ProtectedRoute>} />
+        <Route
+          path="/ChatMain"
+          element={
+            <ProtectedRoute>
+              <ChatMain />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/LocationMain" element={<LocationMain />} />
 
         {/* 시설 */}
-        <Route path="/FacilitiesList/:page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilitiesList baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/FacilityReservationApproval/:page/:searchField?/:searchWord?" element={<ProtectedRoute><FacilityReservationApproval baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/MyFacilityReservationList/:employeeId/:page" element={<ProtectedRoute><MyFacilityReservationList baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/FacilitiesWrite" element={<ProtectedRoute><FacilitiesWrite baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/FacilitiesEdit/:facilityId" element={<ProtectedRoute><FacilitiesEdit baseUrl={url.jsp} /></ProtectedRoute>} />
+        <Route
+          path="/FacilitiesList/:page/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <FacilitiesList baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/FacilityReservationApproval/:page/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <FacilityReservationApproval baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/MyFacilityReservationList/:employeeId/:page"
+          element={
+            <ProtectedRoute>
+              <MyFacilityReservationList baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/FacilitiesWrite"
+          element={
+            <ProtectedRoute>
+              <FacilitiesWrite baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/FacilitiesEdit/:facilityId"
+          element={
+            <ProtectedRoute>
+              <FacilitiesEdit baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 근태 */}
-        <Route path="/AttendanceList/:page/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceList baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/AttendanceList/:page/date/:date/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceList baseUrl={url.jsp} /></ProtectedRoute>} />
-        <Route path="/AttendanceStats/:page/month/:month/:searchField?/:searchWord?" element={<ProtectedRoute><AttendanceStats baseUrl={url.jsp} /></ProtectedRoute>} />
+        <Route
+          path="/AttendanceList/:page/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <AttendanceList baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/AttendanceList/:page/date/:date/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <AttendanceList baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/AttendanceStats/:page/month/:month/:searchField?/:searchWord?"
+          element={
+            <ProtectedRoute>
+              <AttendanceStats baseUrl={baseUrl} />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </>
   );
@@ -358,7 +505,7 @@ function AppRoutes({ scheduleItems, scheduleDateLabel, weather, dataLoading, dat
 /* ---------- App ---------- */
 function App() {
   const [scheduleItems, setScheduleItems] = useState([]);
-  const [scheduleDateLabel, setScheduleDateLabel] = useState(""); // 실제 조회일
+  const [scheduleDateLabel, setScheduleDateLabel] = useState("");
   const [weather, setWeather] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState(null);
@@ -380,7 +527,6 @@ function App() {
           d.setDate(d.getDate() - back);
 
           const list = await fetchFlightsForDate(d);
-
           if (list.length > 0) {
             best = list.slice(0, 10);
             bestLabel = fmtLabelDate(d);
@@ -405,20 +551,20 @@ function App() {
     };
 
     run();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes
-          scheduleItems={scheduleItems}
-          scheduleDateLabel={scheduleDateLabel}
-          weather={weather}
-          dataLoading={loadingData}
-          dataError={dataError}
-        />
-      </AuthProvider>
+      <AppRoutes
+        scheduleItems={scheduleItems}
+        scheduleDateLabel={scheduleDateLabel}
+        weather={weather}
+        dataLoading={loadingData}
+        dataError={dataError}
+      />
     </BrowserRouter>
   );
 }

@@ -1,10 +1,11 @@
-import axios from "axios";
+// import axios from "axios";
 import { useEffect, useState } from "react";
 import { Badge, Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "../Facilities/template/NavigatePage";
 import ModalController from "../modal/ModalController";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function AttendanceList(props) {
@@ -66,31 +67,33 @@ function AttendanceList(props) {
     let response = [];
     let countResp = [];
     let curEmp;
-    let countUrl = props.baseUrl + "/api/attendances/count";
-    let dataUrl = props.baseUrl + "/api/attendances";
+    // let countUrl = props.baseUrl + "/api/attendances/count";
+    // let dataUrl = props.baseUrl + "/api/attendances";
+    let countUrl = "/attendances/count";
+    let dataUrl = "/attendances";
     if (searchField && searchWord) {
       setFormData({ searchField: searchField, searchWord: searchWord });
       if (date !== undefined) {
-        countResp = await axios.get(countUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord);
-        response = await axios.get(dataUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
+        countResp = await api.get(countUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord);
+        response = await api.get(dataUrl + "?date=" + date + "&searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
       } else {
-        countResp = await axios.get(countUrl + "?searchField=" + searchField + "&searchWord=" + searchWord);
-        response = await axios.get(dataUrl + "?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
+        countResp = await api.get(countUrl + "?searchField=" + searchField + "&searchWord=" + searchWord);
+        response = await api.get(dataUrl + "?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize);
       }
     } else {
       setFormData({ searchField: "employeeName", searchWord: "" });
       if (date !== undefined) {
-        countResp = await axios.get(countUrl + "?date=" + date);
-        response = await axios.get(dataUrl + "?date=" + date + "&page=" + page + "&size=" + pageSize);
+        countResp = await api.get(countUrl + "?date=" + date);
+        response = await api.get(dataUrl + "?date=" + date + "&page=" + page + "&size=" + pageSize);
       } else {
-        countResp = await axios.get(countUrl);
-        response = await axios.get(dataUrl + "?page=" + page + "&size=" + pageSize);
+        countResp = await api.get(countUrl);
+        response = await api.get(dataUrl + "?page=" + page + "&size=" + pageSize);
       }
     }
 
     // 출근시각 퇴근 시각 여부로 출근/퇴근 버튼 비활성화
     if (isLoggedIn) {
-      curEmp = await axios.get(dataUrl + "/" + user.employeeId);
+      curEmp = await api.get(dataUrl + "/" + user.employeeId);
       if (curEmp.data.attendanceStart === null) {
         setEmpState(0);
       } else if(curEmp.data.attendanceEnd === null){
@@ -109,7 +112,7 @@ function AttendanceList(props) {
       return;
     }
     if (isLoggedIn) {
-      let response = await axios.post("/api/attendances/checkin/" + user.employeeId);
+      let response = await api.post("/attendances/checkin/" + user.employeeId);
       if (response.data === 1) {
         alert("출근시각이 저장되었습니다.");
         getData();
@@ -124,7 +127,7 @@ function AttendanceList(props) {
       return;
     }
     if (isLoggedIn) {
-      let response = await axios.post("/api/attendances/checkout/" + user.employeeId);
+      let response = await api.post("/attendances/checkout/" + user.employeeId);
       if (response.data === 1) {
         alert("퇴근시각이 저장되었습니다.");
         getData();
@@ -139,8 +142,9 @@ function AttendanceList(props) {
   // 모든 직원 등록하려면 이걸로
   const insertToday = async () => {
     let response = [];
-    let dataUrl = props.baseUrl + "/api/attendances";
-    response = await axios.post(dataUrl);
+    // let dataUrl = props.baseUrl + "/api/attendances";
+    let dataUrl = "/attendances";
+    response = await api.post(dataUrl);
     if (response.data === 1) {
       getData();
     } else {

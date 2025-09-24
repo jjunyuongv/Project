@@ -83,7 +83,8 @@ export default function Navbar() {
                         <NavLink to="/FacilitiesList/1" className={linkClass}>시설물</NavLink>
                         <NavLink to="/AttendanceList/1" className={linkClass}>근태</NavLink>
                         <NavLink to="/MyPage" className={linkClass}>마이페이지</NavLink>
-                        <NavLink to="LocationMain" className={linkClass}>오시는길</NavLink>
+                        {/* ✅ 슬래시 추가 (상대경로 → 절대경로) */}
+                        <NavLink to="/LocationMain" className={linkClass}>오시는길</NavLink>
                     </nav>
 
                     {/* 로그인 / 로그아웃 영역 */}

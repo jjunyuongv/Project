@@ -1,10 +1,11 @@
-import axios from 'axios';
+// import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Form, InputGroup, Spinner, Table } from 'react-bootstrap';
 import ReactModal from 'react-modal';
 import "../Facilities/css/MainContentStyle.css";
 import "./css/ModalStyle.css";
 import Page from "../Facilities/template/Page";
+import api from '../../../api/axios';
 
 function FacilityReservationList(props) {
   const [formData, setFormData] = useState({
@@ -31,8 +32,10 @@ function FacilityReservationList(props) {
   }
 
   const getData = async () => {
-    const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId);
-    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=1&size=" + pageSize);
+    // const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId);
+    // const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=1&size=" + pageSize);
+    const countResp = await api.get("/facilityReservations/count/" + props.parentData.facilityId);
+    const response  = await api.get("/facilityReservations/" + props.parentData.facilityId + "?page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -56,8 +59,10 @@ function FacilityReservationList(props) {
   const searchData = async (e) => {
     e.preventDefault();
     setPrevSearch({ searchField: formData.searchField, searchWord: formData.searchWord });
-    const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
-    const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
+    // const countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+    // const response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
+    const countResp = await api.get("/facilityReservations/count/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+    const response  = await api.get("/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     searchChange = true;
@@ -104,12 +109,15 @@ function FacilityReservationList(props) {
     if (prevSearch.searchWord !== "") {
       // 다른 검색을 하였을때 
       if ((prevSearch.searchField !== formData.searchField || prevSearch.searchWord !== formData.searchWord) && searchChange) {
-        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
+        // response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
+        response = await api.get("/facilityReservations/" + props.parentData.facilityId + "?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
       } else {
-        response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
+        // response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
+        response = await api.get("/facilityReservations/" + props.parentData.facilityId + "?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
       }
     } else {
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=" + page + "&size=" + size);
+      // response = await axios.get(props.baseUrl + "/api/facilityReservations/" + props.parentData.facilityId + "?page=" + page + "&size=" + size);
+      response = await api.get("/facilityReservations/" + props.parentData.facilityId + "?page=" + page + "&size=" + size);
     }
     searchChange = false;
     setRespData(response.data);

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
 import { useAuth } from './AuthContext';
-import axios from "axios";
+// ✅ 공용 axios 인스턴스 사용 (baseURL:'/api', withCredentials:true 권장)
+import api from "../../../api/axios";
 import { useNavigate } from "react-router-dom";
 
 export default function MyPage() {
@@ -53,21 +54,15 @@ export default function MyPage() {
         // user가 아직 준비되지 않았으면 기다림
         if (!user) return;
 
-        // 카카오 소셜 로그인 접근 제한
-        if (user.loginId.startsWith("kakao_")) {
+        // 소셜 로그인 접근 제한
+        if (user.loginId?.startsWith("kakao_") || user.loginId?.startsWith("google_")) {
             alert("소셜 계정은 마이페이지 접근이 제한됩니다.");
-            navigate(-1); // 이전 페이지로 돌아감
+            navigate(-1);
             return;
         }
 
-        // 구글 계정도 마찬가지로 제한
-        if (user.loginId.startsWith("google_")) {
-            alert("소셜 계정은 마이페이지 접근이 제한됩니다.");
-            navigate(-1); // 이전 페이지로 돌아감
-            return;
-        }
-
-        axios.get("http://localhost:8081/api/employees/session-check", { withCredentials: true })
+        // ✅ '/api' 상대 경로 호출 (Vite/Nginx 프록시 공통)
+        api.get("/employees/session-check")
             .then(res => {
                 setEmployeeData(res.data);
                 setEditData({
@@ -83,7 +78,7 @@ export default function MyPage() {
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [isLoggedIn]);
+    }, [isLoggedIn, user, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -109,10 +104,10 @@ export default function MyPage() {
             currentPassword: editData.currentPassword
         };
 
-        axios.put("http://localhost:8081/api/employees/update-info", payload, { withCredentials: true })
+        api.put("/employees/update-info", payload)
             .then(res => {
                 setEmployeeData(prev => ({ ...prev, ...editData }));
-                setEditData(prev => ({ ...prev, currentPassword: "" })); // 초기화
+                setEditData(prev => ({ ...prev, currentPassword: "" }));
                 alert("정보가 수정되었습니다.");
             })
             .catch(err => {
@@ -137,10 +132,7 @@ export default function MyPage() {
             return;
         }
 
-        axios.put("http://localhost:8081/api/employees/update-password", {
-            currentPassword,
-            newPassword
-        }, { withCredentials: true })
+        api.put("/employees/update-password", { currentPassword, newPassword })
             .then(res => {
                 alert("비밀번호가 변경되었습니다.");
                 setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });

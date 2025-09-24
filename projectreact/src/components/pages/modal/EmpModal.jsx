@@ -1,10 +1,11 @@
-import axios from 'axios';
+// import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Button, Form, InputGroup, Spinner, Table } from 'react-bootstrap';
 import ReactModal from 'react-modal';
 import "../Facilities/css/MainContentStyle.css";
 import "./css/ModalStyle.css";
 import Page from "../Facilities/template/Page";
+import api from '../../../api/axios';
 
 function EmpModal(props) {
   const [formData, setFormData] = useState({
@@ -37,8 +38,10 @@ function EmpModal(props) {
   }
 
   const getData = async () => {
-    const countResp = await axios.get(props.baseUrl + "/api/employees/count")
-    const response = await axios.get(props.baseUrl + "/api/employees?page=1&size=" + pageSize);
+    // const countResp = await axios.get(props.baseUrl + "/api/employees/count")
+    const countResp = await api.get("/employees/count");
+    // const response = await axios.get(props.baseUrl + "/api/employees?page=1&size=" + pageSize);
+    const response  = await api.get("/employees?page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);
@@ -60,8 +63,10 @@ function EmpModal(props) {
       return;
     }
     setPrevSearch({ searchField: formData.searchField, searchWord: formData.searchWord });
-    const countResp = await axios.get(props.baseUrl + "/api/employees/count?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
-    const response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
+    // const countResp = await axios.get(props.baseUrl + "/api/employees/count?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+     const countResp = await api.get("/employees/count?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord);
+     // const response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
+    const response  = await api.get("/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=1&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     searchChange = true;
@@ -103,12 +108,15 @@ function EmpModal(props) {
     if (prevSearch.searchWord !== "") {
       // 다른 검색을 하였을때 
       if ((prevSearch.searchField !== formData.searchField || prevSearch.searchWord !== formData.searchWord) && searchChange) {
-        response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
+        // response = await axios.get(props.baseUrl + "/api/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
+        response = await api.get("/employees?searchField=" + formData.searchField + "&searchWord=" + formData.searchWord + "&page=" + page + "&size=" + size);
       } else {
-        response = await axios.get(props.baseUrl + "/api/employees?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
+        // response = await axios.get(props.baseUrl + "/api/employees?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
+        response = await api.get("/employees?searchField=" + prevSearch.searchField + "&searchWord=" + prevSearch.searchWord + "&page=" + page + "&size=" + size);
       }
     } else {
-      response = await axios.get(props.baseUrl + "/api/employees?page=" + page + "&size=" + size);
+      // response = await axios.get(props.baseUrl + "/api/employees?page=" + page + "&size=" + size);
+      response = await api.get("/employees?page=" + page + "&size=" + size);
     }
     searchChange = false;
     setRespData(response.data);

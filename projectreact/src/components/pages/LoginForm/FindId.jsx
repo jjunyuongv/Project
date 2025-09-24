@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+// ✅ 공용 axios 인스턴스 사용 (baseURL:'/api', withCredentials, 인터셉터 적용)
+import api from '../../../api/axios';
 
 function FindId() {
   const [formData, setFormData] = useState({
@@ -8,7 +9,7 @@ function FindId() {
     email: "",
     authCode: "",
   });
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("");  
   const [showModal, setShowModal] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -26,11 +27,11 @@ function FindId() {
       return;
     }
     try {
-      await axios.post(
-  "http://localhost:8081/api/email/send-auth-code",
-  { name: formData.name, email: formData.email, mode: "findId" },
-  { withCredentials: true }
-);
+      await api.post(
+        // ⬇️ '/api' 중복 금지: 인스턴스 baseURL이 이미 '/api'
+        "/email/send-auth-code",
+        { name: formData.name, email: formData.email, mode: "findId" }
+      );
       setIsEmailSent(true);
       setMessage("이메일로 인증번호가 발송되었습니다.");
       setShowModal(true);
@@ -49,10 +50,9 @@ function FindId() {
       return;
     }
     try {
-      const response = await axios.post(
-        "http://localhost:8081/api/email/verify-auth-code",
-        { email, authCode: code },
-        { withCredentials: true }
+      const response = await api.post(
+        "/email/verify-auth-code",
+        { email, authCode: code }
       );
 
       if (response.data.success) {
@@ -88,19 +88,18 @@ function FindId() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:8081/api/employees/find-id",
-        { name, email },
-        { withCredentials: true }
+      const response = await api.post(
+        "/employees/find-id",
+        { name, email }
       );
 
       setFoundId(response.data.foundId);
       setMessage(`아이디를 찾았습니다: ${response.data.foundId}`);
       setShowModal(true);
     } catch (error) {
-    setMessage(error.response?.data?.message || "일치하는 아이디를 찾을 수 없습니다.");
-    setShowModal(true);
-}
+      setMessage(error.response?.data?.message || "일치하는 아이디를 찾을 수 없습니다.");
+      setShowModal(true);
+    }
   };
 
   const closeModal = () => {

@@ -1,10 +1,11 @@
-import axios from 'axios';
+// import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row, Spinner } from 'react-bootstrap';
 import ReactModal from 'react-modal';
 import "../Facilities/css/MainContentStyle.css";
 import "./css/ModalStyle.css";
 import { useAuth } from '../LoginForm/AuthContext';
+import api from '../../../api/axios';
 
 function AttendanceEdit(props) {
   const [formData, setFormData] = useState({
@@ -41,7 +42,8 @@ function AttendanceEdit(props) {
   const submitData = async (e) => {
     e.preventDefault();
 
-    let response = await axios.post(props.baseUrl + "/api/attendances/" + formData.attendanceId, formData);
+    // let response = await axios.post(props.baseUrl + "/api/attendances/" + formData.attendanceId, formData);
+    let response = await api.post("/attendances/" + formData.attendanceId, formData);
     // 입력 성공
     if (response.data === 1) {
       alert("수정 성공!");

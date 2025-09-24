@@ -1,49 +1,61 @@
+// src/api/axios.js
 import axios from 'axios';
 
-// 개발용 기본: Vite 프록시(/api -> 8081) 사용
-// 필요하면 .env 에 VITE_API_BASE=http://localhost:8081/api 설정 가능
+// 도커/EC2 배포: Nginx가 /api, /ws-chat 프록시 → 프론트는 상대 경로만 사용
+// 개발 로컬(Vite)에서도 proxy가 /api를 8081로 넘기므로 동일하게 동작
 const API_BASE =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || '/api';
 
 const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true,                      // 세션/CSRF 쿠키 전송 (JSESSIONID 등)
-  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,         // 세션/CSRF 쿠키 전송(JSESSIONID 등)
   timeout: 15000,
+  // CSRF 자동 주입(쿠키 이름과 헤더 이름을 서버에 맞춰 지정)
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
+  headers: {
+    Accept: 'application/json',  // 전역 Content-Type은 지정하지 말기!
+  },
 });
 
-// 쿠키에서 값 꺼내기 (CSRF 토큰 등)
-const getCookie = (name) =>
-  document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(name + '='))
-    ?.split('=')[1];
-
-// 매 요청마다 최신 토큰/식별자/CSRF를 주입 (생성 시점에 굳히지 말고!)
+// 매 요청마다 최신 토큰/식별자 주입
 api.interceptors.request.use((config) => {
-  // JWT 토큰: 로그인 후 갱신돼도 항상 최신값 전송
+  // JWT 토큰
   const token =
     localStorage.getItem('authToken') || localStorage.getItem('accessToken');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = token.startsWith('Bearer ')
+      ? token
+      : `Bearer ${token}`;
   } else {
-    // 토큰 없으면 헤더 제거(빈 'Bearer null' 방지)
     delete config.headers.Authorization;
   }
 
-  // 프로젝트에서 사용하는 직원 식별 헤더(있을 때만)
+  // 직원 식별 헤더(있을 때만)
   try {
     const me = JSON.parse(localStorage.getItem('me') || 'null');
     if (me?.employeeId) config.headers['X-Employee-Id'] = me.employeeId;
-  } catch {
-    // ignore
-  }
+  } catch { /* ignore */ }
 
-  // (옵션) 서버가 XSRF-TOKEN 쿠키를 내려주는 경우 대비
-  const xsrf = getCookie('XSRF-TOKEN') || getCookie('X-XSRF-TOKEN');
-  if (xsrf) config.headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrf);
+  // ✅ FormData 업로드 시 boundary 자동 설정을 위해 Content-Type 제거
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
 
   return config;
 });
+
+// (선택) 공통 에러 처리: 401/419 → 로그인 유도, 403 → 권한 메시지 등
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const status = err?.response?.status;
+    if (status === 401) {
+      // 예: 세션 만료 처리
+      // window.location.href = '/login?reason=expired';
+    }
+    return Promise.reject(err);
+  }
+);
 
 export default api;

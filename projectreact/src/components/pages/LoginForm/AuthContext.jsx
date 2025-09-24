@@ -1,11 +1,10 @@
 // @ts-nocheck
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../../api/axios';
+// ✅ 공용 axios 인스턴스 사용 (baseURL:'/api', withCredentials, 인터셉터 적용)
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
-
-const API = (path) => `http://localhost:8081${path}`; // 백엔드 실제 주소
 
 function readMe() {
   try { return JSON.parse(localStorage.getItem('me') || 'null'); } catch { return null; }
@@ -18,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔹 로그인 에러 상태 추가
+  // 🔹 로그인 에러 상태
   const [loginError, setLoginError] = useState(null);
 
   // ---------------------------
@@ -26,26 +25,28 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const login = async (dto) => {
     try {
-      const url = API('/api/employees/login');
-      const response = await axios.post(url, { loginId: dto.loginId, password: dto.password }, { withCredentials: true });
+      // ✅ '/api'를 중복해서 쓰지 않습니다. (인스턴스 baseURL이 '/api')
+      const { data } = await api.post('/employees/login', {
+        loginId: dto.loginId,
+        password: dto.password,
+      });
+
       const me = {
-        employeeId: Number(response.data.employeeId),
-        name: response.data.name,
-        loginId: response.data.loginId,
-        role: response.data.role
+        employeeId: Number(data.employeeId),
+        name: data.name,
+        loginId: data.loginId,
+        role: data.role,
       };
       saveMe(me);
       setIsLoggedIn(true);
       setUser(me);
-      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간 설정
+      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간
 
-      // 🔹 로그인 성공 시 에러 초기화
       setLoginError(null);
-
       return me;
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        setLoginError(err.response.data); // 서버 메시지 저장
+        setLoginError(err.response.data);
       } else {
         setLoginError("알 수 없는 오류가 발생했습니다.");
       }
@@ -57,9 +58,11 @@ export const AuthProvider = ({ children }) => {
   // 로그아웃
   // ---------------------------
   const logout = async () => {
-    try { await axios.post(API('/api/employees/logout'), {}, { withCredentials: true }); }
-    catch (err) { console.error(err); }
-    finally {
+    try {
+      await api.post('/employees/logout', {}); // ✅ 인스턴스 사용
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsLoggedIn(false);
       setUser(null);
       localStorage.removeItem('sessionExpiration');
@@ -72,23 +75,19 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const handleKakaoLogin = async (code) => {
     try {
-      const response = await axios.post(API('/api/auth/kakao'), { code }, { withCredentials: true });
-      const data = response.data;
+      const { data } = await api.post('/auth/kakao', { code }); // ✅ 인스턴스 사용
       const me = {
         employeeId: Number(data.employeeId),
         name: data.name,
         loginId: data.loginId,
         role: data.role,
-        isKakao: data.loginId.startsWith("kakao_") // ✅ 카카오 로그인 여부 추가
+        isKakao: data.loginId?.startsWith("kakao_"),
       };
 
       saveMe(me);
       setIsLoggedIn(true);
       setUser(me);
-
-      // 🔹 카카오 로그인 시 세션 시간 설정
-      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간 설정
-
+      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
     } catch (error) {
       console.error("카카오 로그인 중 오류 발생:", error);
     }
@@ -98,31 +97,27 @@ export const AuthProvider = ({ children }) => {
   // 구글 로그인 처리
   // ---------------------------
   const handleGoogleLogin = async (code) => {
-  try {
-    const response = await axios.post(API('/api/auth/google'), { code }, { withCredentials: true });
-    const data = response.data;
+    try {
+      const { data } = await api.post('/auth/google', { code }); // ✅ 인스턴스 사용
+      const me = {
+        employeeId: Number(data.employeeId),
+        name: data.name,
+        loginId: data.loginId,
+        role: data.role,
+        isGoogle: data.loginId?.startsWith("google_"),
+      };
 
-    const me = {
-      employeeId: Number(data.employeeId),
-      name: data.name,
-      loginId: data.loginId,
-      role: data.role,
-      isGoogle: data.loginId.startsWith("google_") // 구글 로그인 여부
-    };
-
-    saveMe(me);
-    setIsLoggedIn(true);
-    setUser(me);
-
-    localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
-
-  } catch (error) {
-    console.error("구글 로그인 중 오류 발생:", error);
-  }
-};
+      saveMe(me);
+      setIsLoggedIn(true);
+      setUser(me);
+      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
+    } catch (error) {
+      console.error("구글 로그인 중 오류 발생:", error);
+    }
+  };
 
   // ---------------------------
-  // 프론트 세션 체크 & 카카오 메시지 처리
+  // 프론트 세션 체크 & 메시지 처리
   // ---------------------------
   useEffect(() => {
     const storedUser = readMe();
@@ -164,23 +159,25 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('storage', onStorage);
 
     const handleMessage = (event) => {
-      if (event.origin !== "http://localhost:5173") return;
-      const { type, user } = event.data;
+      // ✅ dev/prod 모두 통과: 현재 앱의 오리진만 허용
+      if (event.origin !== window.location.origin) return;
+
+      const { type, user } = event.data || {};
       if (type === "kakao-login" && user) {
         const newUser = { ...user, employeeId: Number(user.employeeId) };
         setUser(newUser);
         setIsLoggedIn(true);
         saveMe(newUser);
-        localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간 설정
+        localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
         console.log("카카오 로그인 상태 반영됨:", newUser);
       }
 
-        if (type === "google-login" && user) {
+      if (type === "google-login" && user) {
         const newUser = { ...user, employeeId: Number(user.employeeId) };
         setUser(newUser);
         setIsLoggedIn(true);
         saveMe(newUser);
-        localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간 설정
+        localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
         console.log("구글 로그인 상태 반영됨:", newUser);
       }
     };
@@ -193,7 +190,6 @@ export const AuthProvider = ({ children }) => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener("message", handleMessage);
     };
-
   }, []);
 
   if (isLoading) return <div>Loading...</div>;
@@ -207,7 +203,7 @@ export const AuthProvider = ({ children }) => {
       handleKakaoLogin,
       handleGoogleLogin,
       loginError,
-      setLoginError, 
+      setLoginError,
       isLoading
     }}>
       {children}

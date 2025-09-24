@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+// axios 대신 공용 인스턴스
+import api from "../../../api/axios";
 import { useAuth } from './AuthContext';
 import './signup.css';
 import './modal.css';
@@ -103,7 +104,8 @@ function Signup() {
         }
 
         try {
-            await axios.post("http://localhost:8081/api/email/send-auth-code", { 
+            // 🔁 api 인스턴스 + 상대경로
+            await api.post("/email/send-auth-code", { 
                 email: formData.email,
                 mode: "signup"
             });
@@ -127,7 +129,8 @@ function Signup() {
             return;
         }
         try {
-            const response = await axios.post("http://localhost:8081/api/email/verify-auth-code", {
+            // 🔁 api 인스턴스 + 상대경로
+            const response = await api.post("/email/verify-auth-code", {
                 email: formData.email,
                 authCode: authCode
             });
@@ -172,16 +175,13 @@ function Signup() {
         }
 
         try {
-            // [reCAPTCHA] 중요!
-            // DTO를 건드리지 않기 위해, 토큰은 바디가 아니라 "헤더"로 전송한다.
-            // 백엔드 EmployeeController는 X-Recaptcha-Token 헤더 또는 recaptchaToken 쿼리/바디를 모두 지원.
-            await axios.post(
-                "http://localhost:8081/api/employees/signup",
-                formData, // ← 기존 form 데이터만 전송 (DTO에 없는 필드는 넣지 않음)
+            // 🔁 api 인스턴스 + 상대경로
+            // 헤더에 reCAPTCHA 토큰 포함 (DTO 변경 없이 서버에서 검증)
+            await api.post(
+                "/employees/signup",
+                formData,
                 {
-                    withCredentials: true,
                     headers: {
-                        // [reCAPTCHA] 서버 검증용 토큰 헤더
                         "X-Recaptcha-Token": captchaToken
                     }
                 }

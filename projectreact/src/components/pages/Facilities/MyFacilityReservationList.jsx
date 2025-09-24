@@ -1,9 +1,11 @@
-import axios from "axios";
+// import axios from "axios";
+
 import { useEffect, useState } from "react";
 import { Badge, Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "./template/NavigatePage";
 import ModalController from "../modal/ModalController";
+import api from "../../../api/axios";
 
 
 function MyFacilityReservationList(props) {
@@ -38,7 +40,8 @@ function MyFacilityReservationList(props) {
 
   const confirmDelete = async (reservationId) => {
     if (confirm("예약 신청을 취소하시겠습니까?")) {
-      let response = await axios.delete(props.baseUrl + "/api/facilityReservations/" + reservationId);
+      // let response = await axios.delete(props.baseUrl + "/api/facilityReservations/" + reservationId);
+      let response = await api.delete("/facilityReservations/" + reservationId);
       if (response.data === 1) {
         alert("삭제완료");
         getData();
@@ -51,8 +54,10 @@ function MyFacilityReservationList(props) {
   const getData = async () => {
     let response = [];
     let countResp = []
-    countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count?searchField=reservationEmployeeId&searchWord=" + employeeId);
-    response = await axios.get(props.baseUrl + "/api/facilityReservations?searchField=reservationEmployeeId&searchWord=" + employeeId + "&page=" + page + "&size=" + pageSize);
+    // countResp = await axios.get(props.baseUrl + "/api/facilityReservations/count?searchField=reservationEmployeeId&searchWord=" + employeeId);
+    countResp = await api.get("/facilityReservations/count?searchField=reservationEmployeeId&searchWord=" + employeeId);
+    // response = await axios.get(props.baseUrl + "/api/facilityReservations?searchField=reservationEmployeeId&searchWord=" + employeeId + "&page=" + page + "&size=" + pageSize);
+    response = await api.get("/facilityReservations?searchField=reservationEmployeeId&searchWord=" + employeeId + "&page=" + page + "&size=" + pageSize);
     setCount(countResp.data);
     setRespData(response.data);
     setIsEndLoading(true);

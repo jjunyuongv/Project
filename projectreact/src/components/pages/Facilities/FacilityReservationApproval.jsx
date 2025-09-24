@@ -1,10 +1,12 @@
-import axios from "axios";
+// import axios from "axios";
+
 import { useEffect, useState } from "react";
 import { Badge, Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import NavigatePage from "./template/NavigatePage";
 import ModalController from "../modal/ModalController";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function FacilityReservationApproval(props) {
@@ -59,12 +61,16 @@ function FacilityReservationApproval(props) {
     let countResp = []
     if (searchField && searchWord) {
       setFormData({ searchField: formData.searchField, searchWord: formData.searchWord });
-      countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count?searchField=" + searchField + "&searchWord=" + searchWord);
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size" + pageSize);
+      // countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count?searchField=" + searchField + "&searchWord=" + searchWord);
+      countResp = await api.get("/facilityReservations/approval/count?searchField=" + searchField + "&searchWord=" + searchWord);
+      // response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size" + pageSize);
+      response = await api.get("/facilityReservations/approval?searchField=" + searchField + "&searchWord=" + searchWord + "&page=" + page + "&size=" + pageSize); 
     } else {
       setFormData({ searchField: "reservationEmployeeName", searchWord: "" });
-      countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count");
-      response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?page=" + page + "&size=" + pageSize);
+      // countResp = await axios.get(props.baseUrl + "/api/facilityReservations/approval/count");
+      countResp = await api.get("/facilityReservations/approval/count");
+      // response = await axios.get(props.baseUrl + "/api/facilityReservations/approval?page=" + page + "&size=" + pageSize);
+      response = await api.get("/facilityReservations/approval?page=" + page + "&size=" + pageSize);
     }
     setCount(countResp.data);
     setRespData(response.data);
@@ -102,7 +108,8 @@ function FacilityReservationApproval(props) {
     if (confirm(reservationStatus + " 하시겠습니까?")) {
       const approvalData = { reservationStatus: reservationStatus };
 
-      let response = await axios.post(props.baseUrl + "/api/facilityReservations/" + reservationId, approvalData);
+      // let response = await axios.post(props.baseUrl + "/api/facilityReservations/" + reservationId, approvalData);
+      let response = await api.post("/facilityReservations/" + reservationId, approvalData);
       // 입력 성공
       if (response.data === 1) {
         alert("결재완료");
