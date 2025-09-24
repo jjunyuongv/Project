@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Button, Col, Form, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import ModalController from "../modal/ModalController";
-import axios from "axios";
+// import axios from "axios";
 import { useAuth } from "../LoginForm/AuthContext";
+import api from "../../../api/axios";
 
 
 function FacilitiesEdit(props) {
@@ -40,7 +41,7 @@ function FacilitiesEdit(props) {
 
   const getData = async () => {
     let response = [];
-    response = await axios.get(props.baseUrl + "/api/facilities/" + facilityId);
+    response = await api.get("/facilities/" + facilityId);
     let data = response.data;
     formData.facilityName = data.facilityName;
     formData.facilityType = data.facilityType;
@@ -73,7 +74,7 @@ function FacilitiesEdit(props) {
       return;
     }
 
-    let response = await axios.post(props.baseUrl + "/api/facilities/" + facilityId, formData);
+    let response = await api.post("/facilities/" + facilityId, formData);
     // 입력 성공
     if (response.data === 1) {
       alert("시설물 수정 성공!");

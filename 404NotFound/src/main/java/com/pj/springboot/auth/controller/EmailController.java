@@ -16,7 +16,7 @@ import com.pj.springboot.auth.dto.EmailRequest;
 import com.pj.springboot.auth.repository.EmployeeRepository;
 import com.pj.springboot.auth.service.EmailAuthService;
 
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://notfound.p-e.kr")
 @RestController
 @RequestMapping("/api/email")
 public class EmailController {

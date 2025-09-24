@@ -16,20 +16,20 @@ import jakarta.servlet.http.HttpServletResponse;
 public class FileUtil {
 	public static void uploadFiles(List<MultipartFile> fileList, List<String> sfileList)
 	         throws IOException, ServletException {
-	      String uploadDir = ResourceUtils.getFile("classpath:static/uploads/").toPath().toString();
-	      System.out.println(uploadDir);
+//	      String uploadDir = ResourceUtils.getFile("classpath:static/uploads/").toPath().toString();
+//	      System.out.println(uploadDir);
 
 	      for (int i = 0; i < fileList.size(); i++) {
 	         MultipartFile file = fileList.get(i);
 	         String fileName = sfileList.get(i);
-	         file.transferTo(new File(uploadDir + File.separator + fileName.substring(0, fileName.lastIndexOf("."))));
+	         file.transferTo(new File("/app/uploads/" + fileName.substring(0, fileName.lastIndexOf("."))));
 	      }
 	   }
 
 	   public static void deleteFiles(List<String> sfileList) throws FileNotFoundException {
-	      String uploadDir = ResourceUtils.getFile("classpath:static/uploads/").toPath().toString();
+//	      String uploadDir = ResourceUtils.getFile("/app/uploads").toPath().toString();
 	      for (int i = 0; i < sfileList.size(); i++) {
-	         File deleteFile = new File(uploadDir + File.separator + sfileList.get(i));
+	         File deleteFile = new File("/app/uploads/" + sfileList.get(i));
 	         if (deleteFile.exists()) {
 	            deleteFile.delete();
 	         }
@@ -38,7 +38,7 @@ public class FileUtil {
 
 	   public static void downloadFile(String sfile, String ofile, HttpServletResponse resp) throws IOException {
 	      try {
-	         String uploadDir = ResourceUtils.getFile("classpath:static/uploads/").toPath().toString();
+	         String uploadDir = "/app/uploads/";
 	         String path = uploadDir + "/" + sfile;
 	         File file = new File(path);
 	         FileInputStream in = new FileInputStream(path);

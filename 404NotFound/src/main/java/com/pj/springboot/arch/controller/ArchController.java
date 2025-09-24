@@ -87,6 +87,7 @@ public class ArchController {
 		try {
 			return archiveService.update(archId, dto);
 		} catch (Exception e) {
+			System.out.println("컨트롤러 오류");
 			return -1;
 		}
 	}

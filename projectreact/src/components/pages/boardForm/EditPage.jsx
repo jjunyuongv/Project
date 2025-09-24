@@ -41,8 +41,8 @@ function EditPage(props) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    console.log(formData);
     let response = await api.post("/archive/" + id, formData); // ✅
+    console.log(response.data);
     // 입력 성공
     if (response.data === 1) {
       alert("게시물이 수정되었습니다.");

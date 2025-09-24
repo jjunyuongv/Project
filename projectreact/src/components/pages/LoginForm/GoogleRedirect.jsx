@@ -4,7 +4,7 @@ import api from "../../../api/axios";
 
 function GoogleRedirect() {
   useEffect(() => {
-    const PARENT_ORIGIN = window.location.origin; // ← 배포/개발 공통
+    const PARENT_ORIGIN = "http://notfound.p-e.kr";  // 배포 도메인
     console.log("GoogleRedirect mounted, URL:", window.location.href);
 
     const params = new URLSearchParams(window.location.search);

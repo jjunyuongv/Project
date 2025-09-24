@@ -110,3 +110,7 @@ th {
 strong{
   text-align: left;
 }
+
+.sm-text{
+  font-size: 12px !important ;
+}

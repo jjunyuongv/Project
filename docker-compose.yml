@@ -10,7 +10,6 @@ services:
       MYSQL_USER: 404notfound
       MYSQL_PASSWORD: 1234
       TZ: Asia/Seoul
-    # 호스트 포트 미노출(보안/충돌 방지). 필요 시 "3307:3306" 등으로 추가 가능
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
@@ -32,12 +31,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: 1234
       APP_UPLOAD_DIR: /app/uploads
       TZ: Asia/Seoul
+      # 🔑 reCAPTCHA Secret Key 추가
+      RECAPTCHA_SECRET: "6Lf8ZNMrAAAAAJAo1DVqav4X530XTHUje1XbFuUm"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
-    # 프론트(Nginx)가 내부에서 backend:8081로 프록시하므로 외부 포트 노출 불필요
     # ports:
     #   - "8081:8081"
 
@@ -45,7 +45,7 @@ services:
     build: ./projectreact
     restart: always
     ports:
-      - "5173:80"  # 브라우저 접속: http://<호스트IP>:5173
+      - "80:80"  # 브라우저 접속: http://<호스트IP>
     depends_on:
       - backend
 

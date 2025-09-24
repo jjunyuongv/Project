@@ -2,6 +2,7 @@ package com.pj.springboot.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -11,7 +12,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
@@ -27,18 +27,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // CSRF는 REST API 개발 중 비활성화
+            // CORS 활성화 (아래 corsConfigurationSource() 와 연동)
+            .cors(c -> c.configurationSource(corsConfigurationSource()))
+            // SPA + REST 조합에서는 보통 CSRF 비활성화 (세션/쿠키 CSRF 쓰면 여기 조정)
             .csrf(csrf -> csrf.disable())
-            // CORS 설정 적용
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // 세션 정책
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+            // 세션 정책 (필요 시 생성)
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             // 인가 정책
             .authorizeHttpRequests(auth -> auth
-                // 프리플라이트(OPTIONS) 전부 허용
+                // 프리플라이트 허용
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 직원/인증 관련 공개 엔드포인트 (두 설정 합침)
+                // 공개 엔드포인트
                 .requestMatchers(
                     "/api/employees/signup",
                     "/api/employees/login",
@@ -47,21 +47,16 @@ public class SecurityConfig {
                     "/api/employees/find-id",
                     "/api/employees/reset-password"
                 ).permitAll()
-
-                // 이메일 인증 관련
                 .requestMatchers(
                     "/api/email/**",
                     "/api/email/send-auth-code",
                     "/api/email/verify-auth-code"
                 ).permitAll()
-
-                // 캘린더/교대 메모/기타 공개 API
-                .requestMatchers("/api/calendars", "/api/calendars/**").permitAll()
-                .requestMatchers("/api/shift-memos", "/api/shift-memos/**").permitAll()
+                .requestMatchers("/api/calendars/**").permitAll()
+                .requestMatchers("/api/shift-memos/**").permitAll()
                 .requestMatchers("/public-api/**").permitAll()
 
-                // 개발용: 나머지도 전부 허용
-                // 운영에서 인증 필요하면 아래 줄을 .authenticated() 로 변경
+                // 개발 단계: 나머지도 허용(운영 전환시 authenticated() 로 변경)
                 .anyRequest().permitAll()
             );
 
@@ -72,21 +67,26 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
 
-        // 개발 환경: 로컬/사설망 Vite(5173/5174) 및 백엔드(8081) 허용
+        // 크로스 사이트 쿠키/세션을 쓴다면 true
+        cfg.setAllowCredentials(true);
+
+        // 허용 Origin (정확히 기입) — 포트까지 포함한 Origin 기준
         cfg.setAllowedOriginPatterns(List.of(
+            // 개발
             "http://localhost:5173",
             "http://127.0.0.1:5173",
-            "http://192.168.*.*:5173",
-            "http://10.*.*.*:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:5174",
-            "http://localhost:8081"
+
+            // 현재 사용 중인 도메인
+            "https://notfound.p-e.kr"     // 배포(HTTPS) 대비
         ));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+
+        // 메서드/헤더
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(true);
-        // 필요 시 노출 헤더 추가
-        // cfg.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        // 필요시 브라우저에 노출할 응답 헤더
+        cfg.setExposedHeaders(List.of("Set-Cookie"));
+        // 프리플라이트 캐시
+        cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);

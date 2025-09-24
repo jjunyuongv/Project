@@ -165,6 +165,8 @@ CREATE TABLE `facility_reservations` (
   `reservation_date` datetime NOT NULL,
   PRIMARY KEY (`reservation_id`)
 );
+
+
 -- 근태관리
 CREATE TABLE attendances (
     attendance_id BIGINT AUTO_INCREMENT,
@@ -178,6 +180,7 @@ CREATE TABLE attendances (
     PRIMARY KEY (attendance_id)
 );
 
+drop table attendances;
 ALTER TABLE attendances ADD CONSTRAINT uq_attendance UNIQUE (attendance_date, attendance_employee_id);
 
 -- ------------------------------------------------------------------------------

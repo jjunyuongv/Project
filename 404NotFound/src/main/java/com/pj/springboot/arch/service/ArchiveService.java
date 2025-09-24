@@ -160,6 +160,7 @@ public class ArchiveService {
 		try {
 			FileUtil.deleteFiles(names);
 		} catch (Exception e) {
+			System.out.println("163번째줄 오류");
 			return -1;
 		}
 		archfilesRepository.deleteByArchId(entity.getArchId());

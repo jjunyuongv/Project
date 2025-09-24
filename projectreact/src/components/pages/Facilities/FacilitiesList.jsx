@@ -144,7 +144,7 @@ function FacilitiesList(props) {
         <tr key={element.facilityId}>
           <td>{element.facilityType}</td>
           <td>{element.facilityName}</td>
-          <td>{element.facilityLocation}</td>
+          <td className="sm-text">{element.facilityLocation}</td>
           <td>{element.facilityStatus}</td>
           <td>{element.facilityManagerName}</td>
           <td>
