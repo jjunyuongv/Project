@@ -21,12 +21,15 @@ function KakaoRedirect() {
         // 🔁 하드코딩 URL 제거, 프록시/리버스프록시 환경 공통 사용
         const { data: user } = await api.post("/auth/kakao", { code });
 
-        if (user && window.opener) {
-          console.log("Sending user to parent window:", user);
-          window.opener.postMessage({ type: "kakao-login", user }, PARENT_ORIGIN);
+        if (user) {
+          if (window.opener) {
+            // 부모창이 살아있으면 postMessage
+            window.opener.postMessage({ type: "kakao-login", user }, PARENT_ORIGIN);
+          } else {
+            // 부모창이 없으면 localStorage에 임시 저장
+            localStorage.setItem("kakao-temp-login", JSON.stringify(user));
+          }
           window.close();
-        } else if (user) {
-          console.log("User received (no parent window):", user);
         }
       } catch (err) {
         console.error("Kakao login error:", err);
@@ -35,6 +38,10 @@ function KakaoRedirect() {
             { type: "kakao-login", error: err?.message || String(err) },
             PARENT_ORIGIN
           );
+          window.close();
+        } else {
+          // 오류도 localStorage로 저장
+          localStorage.setItem("kakao-temp-login-error", JSON.stringify(err?.message || String(err)));
           window.close();
         }
       }

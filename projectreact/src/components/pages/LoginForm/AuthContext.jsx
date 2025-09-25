@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🔹 로그인 에러 상태
   const [loginError, setLoginError] = useState(null);
 
   // ---------------------------
@@ -25,12 +24,10 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const login = async (dto) => {
     try {
-      // ✅ '/api'를 중복해서 쓰지 않습니다. (인스턴스 baseURL이 '/api')
       const { data } = await api.post('/employees/login', {
         loginId: dto.loginId,
         password: dto.password,
       });
-
       const me = {
         employeeId: Number(data.employeeId),
         name: data.name,
@@ -40,8 +37,7 @@ export const AuthProvider = ({ children }) => {
       saveMe(me);
       setIsLoggedIn(true);
       setUser(me);
-      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000)); // 세션 만료 시간
-
+      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
       setLoginError(null);
       return me;
     } catch (err) {
@@ -59,7 +55,7 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const logout = async () => {
     try {
-      await api.post('/employees/logout', {}); // ✅ 인스턴스 사용
+      await api.post('/employees/logout', {});
     } catch (err) {
       console.error(err);
     } finally {
@@ -75,7 +71,7 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const handleKakaoLogin = async (code) => {
     try {
-      const { data } = await api.post('/auth/kakao', { code }); // ✅ 인스턴스 사용
+      const { data } = await api.post('/auth/kakao', { code });
       const me = {
         employeeId: Number(data.employeeId),
         name: data.name,
@@ -83,7 +79,6 @@ export const AuthProvider = ({ children }) => {
         role: data.role,
         isKakao: data.loginId?.startsWith("kakao_"),
       };
-
       saveMe(me);
       setIsLoggedIn(true);
       setUser(me);
@@ -98,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   // ---------------------------
   const handleGoogleLogin = async (code) => {
     try {
-      const { data } = await api.post('/auth/google', { code }); // ✅ 인스턴스 사용
+      const { data } = await api.post('/auth/google', { code });
       const me = {
         employeeId: Number(data.employeeId),
         name: data.name,
@@ -106,7 +101,6 @@ export const AuthProvider = ({ children }) => {
         role: data.role,
         isGoogle: data.loginId?.startsWith("google_"),
       };
-
       saveMe(me);
       setIsLoggedIn(true);
       setUser(me);
@@ -120,6 +114,26 @@ export const AuthProvider = ({ children }) => {
   // 프론트 세션 체크 & 메시지 처리
   // ---------------------------
   useEffect(() => {
+    // 🔹 부모창 없는 경우 임시 로그인 자동 반영
+    const kakaoTemp = localStorage.getItem("kakao-temp-login");
+    const googleTemp = localStorage.getItem("google-temp-login");
+
+    if (kakaoTemp || googleTemp) {
+      const tempUser = JSON.parse(kakaoTemp || googleTemp);
+      const newUser = { ...tempUser, employeeId: Number(tempUser.employeeId) };
+
+      setUser(newUser);
+      setIsLoggedIn(true);
+      saveMe(newUser);
+      localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
+
+      localStorage.removeItem("kakao-temp-login");
+      localStorage.removeItem("google-temp-login");
+
+      console.log("임시 로그인 데이터 반영됨:", newUser);
+    }
+
+    // 기존 readMe 처리
     const storedUser = readMe();
     if (storedUser?.employeeId) {
       setUser(storedUser);
@@ -159,26 +173,17 @@ export const AuthProvider = ({ children }) => {
     window.addEventListener('storage', onStorage);
 
     const handleMessage = (event) => {
-      // ✅ dev/prod 모두 통과: 현재 앱의 오리진만 허용
-      if (event.origin !== window.location.origin) return;
+      const allowedOrigins = ["http://notfound.p-e.kr"];
+      if (!allowedOrigins.includes(event.origin)) return;
 
       const { type, user } = event.data || {};
-      if (type === "kakao-login" && user) {
+      if ((type === "kakao-login" || type === "google-login") && user) {
         const newUser = { ...user, employeeId: Number(user.employeeId) };
         setUser(newUser);
         setIsLoggedIn(true);
         saveMe(newUser);
         localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
-        console.log("카카오 로그인 상태 반영됨:", newUser);
-      }
-
-      if (type === "google-login" && user) {
-        const newUser = { ...user, employeeId: Number(user.employeeId) };
-        setUser(newUser);
-        setIsLoggedIn(true);
-        saveMe(newUser);
-        localStorage.setItem('sessionExpiration', String(Date.now() + 30 * 60 * 1000));
-        console.log("구글 로그인 상태 반영됨:", newUser);
+        console.log(`${type} 상태 반영됨:`, newUser);
       }
     };
     window.addEventListener("message", handleMessage);

@@ -182,7 +182,7 @@ CREATE TABLE attendances (
 
 drop table attendances;
 ALTER TABLE attendances ADD CONSTRAINT uq_attendance UNIQUE (attendance_date, attendance_employee_id);
-
+select * from attendances;
 -- ------------------------------------------------------------------------------
 -- 회원정보 더미
 ALTER TABLE employees MODIFY employee_id INT NOT NULL AUTO_INCREMENT;
